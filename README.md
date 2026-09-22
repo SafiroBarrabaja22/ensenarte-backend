@@ -46,7 +46,7 @@ ensenarte-backend/
 │       │                   ProgresoUsuario, IntentoEvaluacion
 │       ├── views.py        Catálogo, diccionario y motor de evaluación
 │       ├── views_panel.py  CRUD administrativo (ViewSets)
-│       ├── permissions.py  EsCreadorDeCursos
+│       ├── permissions.py  EsCreadorDeCursos, EsProfesor, EsInterprete
 │       └── management/commands/poblar_datos.py
 ├── docs/
 │   ├── API.md              Contrato de todos los endpoints
@@ -125,11 +125,18 @@ El archivo `.env` está en `.gitignore` y **nunca** debe subirse al repositorio.
 |---|---|---|
 | Visitante | Sin cuenta | Ver el catálogo de cursos |
 | Usuario | Se registra en `/api/auth/registro/` | Diccionario, evaluaciones, perfil |
-| Creador de cursos | Grupo `CreadorDeCursos`, o `is_staff` | Todo el CRUD de `/api/panel/` |
+| Profesor | Grupo `Profesor` | CRUD de diccionario y evaluaciones (`preguntas`/`opciones`), ver `/api/panel/estudiantes/estrellas/`. No administra cursos |
+| Interprete | Grupo `Interprete` | Solo subir gifs: `POST /api/panel/diccionario/<id>/gif/` y `POST /api/panel/preguntas/<id>/gif/` |
+| Creador de cursos | Grupo `CreadorDeCursos`, o `is_staff` | Todo el CRUD de `/api/panel/`, incluidos cursos |
 | Superusuario | `createsuperuser` | Todo, incluido el admin de Django |
 
-El grupo `CreadorDeCursos` se crea al ejecutar `poblar_datos`. Para asignarlo a
-un usuario: admin de Django → Usuarios → seleccionar → Grupos.
+Los tres grupos (`CreadorDeCursos`, `Profesor`, `Interprete`) se crean al
+ejecutar `poblar_datos`. No hay un registro especial por rol: el usuario se
+crea normal en `/api/auth/registro/` (o desde el admin) y luego alguien con
+acceso al admin de Django lo asigna al grupo correspondiente desde
+Usuarios → seleccionar → Grupos. El login es el mismo para todos los roles;
+lo único que cambia son los permisos, visibles en el perfil (`GET
+/api/auth/perfil/`) como `es_creador`, `es_profesor` y `es_interprete`.
 
 ---
 
@@ -158,8 +165,14 @@ La base de datos guarda **solo el nombre del archivo** (por ejemplo
 `abecedario/a.gif`). Los archivos en sí son recursos de presentación y están en
 el repositorio del frontend, bajo `assets/imagenes/` y `assets/videos/`.
 
-La única excepción son las fotos de perfil que sube el usuario: esas sí se
-guardan en este backend, en `MEDIA_ROOT` (`/media/`).
+Hay dos excepciones que sí se guardan en este backend, en `MEDIA_ROOT`
+(`/media/`):
+
+- Las fotos de perfil que sube el usuario.
+- Los gifs que sube el rol **Interprete** vía `POST
+  /api/panel/diccionario/<id>/gif/` y `POST /api/panel/preguntas/<id>/gif/`.
+  En ese caso el campo `video_gif`/`video` deja de ser un nombre de archivo del
+  frontend y pasa a guardar la URL del archivo subido (`/media/...`).
 
 ---
 

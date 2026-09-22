@@ -16,6 +16,8 @@ class PerfilSerializer(serializers.ModelSerializer):
     correo = serializers.EmailField(source="user.email", read_only=True)
     foto_perfil_url = serializers.SerializerMethodField()
     es_creador = serializers.SerializerMethodField()
+    es_profesor = serializers.SerializerMethodField()
+    es_interprete = serializers.SerializerMethodField()
 
     class Meta:
         model = PerfilUsuario
@@ -27,6 +29,8 @@ class PerfilSerializer(serializers.ModelSerializer):
             "foto_perfil_url",
             "estrellas",
             "es_creador",
+            "es_profesor",
+            "es_interprete",
         )
         read_only_fields = ("estrellas",)
         extra_kwargs = {"foto_perfil": {"write_only": True, "required": False}}
@@ -44,6 +48,22 @@ class PerfilSerializer(serializers.ModelSerializer):
             user.is_superuser
             or user.is_staff
             or user.groups.filter(name="CreadorDeCursos").exists()
+        )
+
+    def get_es_profesor(self, obj):
+        user = obj.user
+        return bool(
+            user.is_superuser
+            or user.is_staff
+            or user.groups.filter(name="Profesor").exists()
+        )
+
+    def get_es_interprete(self, obj):
+        user = obj.user
+        return bool(
+            user.is_superuser
+            or user.is_staff
+            or user.groups.filter(name="Interprete").exists()
         )
 
 

@@ -11,7 +11,7 @@ from django.core.management.base import BaseCommand
 from django.db import transaction
 
 from apps.cursos.models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta
-from apps.cursos.permissions import GRUPO_CREADOR
+from apps.cursos.permissions import GRUPO_CREADOR, GRUPO_INTERPRETE, GRUPO_PROFESOR
 
 ABECEDARIO = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
 
@@ -38,16 +38,17 @@ PALABRAS_SALUDOS = ["Hola", "Gracias", "Por favor", "Buenos dias", "Hasta luego"
 
 
 class Command(BaseCommand):
-    help = "Crea el grupo CreadorDeCursos y carga cursos de ejemplo."
+    help = "Crea los grupos de roles y carga cursos de ejemplo."
 
     @transaction.atomic
     def handle(self, *args, **options):
-        grupo, creado = Group.objects.get_or_create(name=GRUPO_CREADOR)
-        self.stdout.write(
-            self.style.SUCCESS(f"Grupo {GRUPO_CREADOR} creado.")
-            if creado
-            else f"Grupo {GRUPO_CREADOR} ya existia."
-        )
+        for nombre_grupo in (GRUPO_CREADOR, GRUPO_PROFESOR, GRUPO_INTERPRETE):
+            grupo, creado = Group.objects.get_or_create(name=nombre_grupo)
+            self.stdout.write(
+                self.style.SUCCESS(f"Grupo {nombre_grupo} creado.")
+                if creado
+                else f"Grupo {nombre_grupo} ya existia."
+            )
 
         autor = User.objects.filter(is_superuser=True).first()
 

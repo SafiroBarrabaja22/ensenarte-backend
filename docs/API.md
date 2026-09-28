@@ -54,7 +54,9 @@ Público. Crea un usuario y su perfil.
     "avatar": "imgPredeterminadaUsuario.png",
     "foto_perfil_url": null,
     "estrellas": 0,
-    "es_creador": false
+    "es_creador": false,
+    "es_profesor": false,
+    "es_interprete": false
   }
 }
 ```
@@ -76,7 +78,14 @@ Público.
 {
   "access": "eyJhbGciOi...",
   "refresh": "eyJhbGciOi...",
-  "usuario": { "nombre": "carlos", "correo": "...", "estrellas": 2, "es_creador": false }
+  "usuario": {
+    "nombre": "carlos",
+    "correo": "...",
+    "estrellas": 2,
+    "es_creador": false,
+    "es_profesor": false,
+    "es_interprete": false
+  }
 }
 ```
 
@@ -271,8 +280,15 @@ Escala de mensajes: 0 errores → felicitación; hasta 15 → ánimo; hasta 30 �
 
 # 4. Panel administrativo
 
-Todo bajo `/panel/` exige pertenecer al grupo `CreadorDeCursos`, o ser `staff`
-o superusuario. En caso contrario devuelve **403**.
+Todo bajo `/panel/` exige autenticación y, además, uno de estos grupos (o ser
+`staff`/superusuario, que siempre tienen acceso total). En caso contrario
+devuelve **403**.
+
+| Grupo | Endpoints permitidos |
+|---|---|
+| `CreadorDeCursos` | Todos, incluido `/panel/cursos/` |
+| `Profesor` | `/panel/preguntas/`, `/panel/opciones/`, `/panel/diccionario/`, `/panel/estudiantes/estrellas/`. No `/panel/cursos/` |
+| `Interprete` | Solo `POST /panel/diccionario/<id>/gif/` y `POST /panel/preguntas/<id>/gif/` |
 
 Las listas usan la paginación por defecto de DRF:
 
@@ -324,6 +340,38 @@ Dos reglas aplicadas en el servidor:
 
 CRUD completo. Filtro: `GET /panel/diccionario/?curso=<id>`.
 Campos: `curso` (id), `titulo`, `imagen_frontal`, `video_gif`.
+
+## GET `/panel/estudiantes/estrellas/`
+
+Grupos `CreadorDeCursos` o `Profesor` (o `staff`/superusuario). Lista de
+estudiantes ordenada por estrellas, de mayor a menor.
+
+```json
+[
+  { "usuario": "carlos", "correo": "carlos@correo.com", "estrellas": 5 },
+  { "usuario": "ana", "correo": "ana@correo.com", "estrellas": 2 }
+]
+```
+
+## POST `/panel/diccionario/<id>/gif/`
+
+Grupos `Interprete`, `Profesor` o `CreadorDeCursos` (o `staff`/superusuario).
+Sube el gif de una palabra del diccionario. `multipart/form-data` con el
+archivo en el campo `gif`.
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/panel/diccionario/1/gif/ \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -F "gif=@sena_a.gif"
+```
+
+Guarda el archivo en `MEDIA_ROOT` y actualiza `video_gif` con su URL.
+Responde con la palabra actualizada. **400** si falta el archivo.
+
+## POST `/panel/preguntas/<id>/gif/`
+
+Igual que el anterior pero para el campo `video` de una pregunta de
+evaluación.
 
 ---
 

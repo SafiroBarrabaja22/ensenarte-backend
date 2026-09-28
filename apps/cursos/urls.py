@@ -44,5 +44,20 @@ urlpatterns = [
 
     # --- Panel administrativo ---
     path("panel/resumen/", views_panel.resumen_panel, name="resumen_panel"),
+    path(
+        "panel/estudiantes/estrellas/",
+        views_panel.estrellas_estudiantes,
+        name="estrellas_estudiantes",
+    ),
+    path(
+        "panel/diccionario/<int:pk>/gif/",
+        views_panel.subir_gif_palabra,
+        name="subir_gif_palabra",
+    ),
+    path(
+        "panel/preguntas/<int:pk>/gif/",
+        views_panel.subir_gif_pregunta,
+        name="subir_gif_pregunta",
+    ),
     path("panel/", include(router.urls)),
 ]

@@ -1,16 +1,24 @@
 from django.contrib.auth.models import User
-from rest_framework import viewsets
+from django.core.files.storage import default_storage
+from django.shortcuts import get_object_or_404
+from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
+from apps.usuarios.models import PerfilUsuario
+
 from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta
-from .permissions import EsCreadorDeCursos
+from .permissions import EsCreadorDeCursos, EsInterprete, EsProfesor
 from .serializers import (
     CursoPanelSerializer,
     OpcionPanelSerializer,
     PalabraPanelSerializer,
     PreguntaPanelSerializer,
 )
+
+# El profesor gestiona contenido (diccionario y evaluaciones) pero no cursos.
+PUEDE_GESTIONAR_CONTENIDO = EsCreadorDeCursos | EsProfesor
+PUEDE_SUBIR_GIF = EsCreadorDeCursos | EsProfesor | EsInterprete
 
 
 class CursoViewSet(viewsets.ModelViewSet):
@@ -28,7 +36,7 @@ class PreguntaViewSet(viewsets.ModelViewSet):
     """CRUD de preguntas. Filtra con ?curso=<id>."""
 
     serializer_class = PreguntaPanelSerializer
-    permission_classes = [EsCreadorDeCursos]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
 
     def get_queryset(self):
         queryset = Pregunta.objects.select_related("curso").prefetch_related("opciones")
@@ -42,7 +50,7 @@ class OpcionViewSet(viewsets.ModelViewSet):
     """CRUD de opciones. Filtra con ?pregunta=<id>."""
 
     serializer_class = OpcionPanelSerializer
-    permission_classes = [EsCreadorDeCursos]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
 
     def get_queryset(self):
         queryset = OpcionPregunta.objects.select_related("pregunta")
@@ -72,7 +80,7 @@ class PalabraViewSet(viewsets.ModelViewSet):
     """CRUD del diccionario. Filtra con ?curso=<id>."""
 
     serializer_class = PalabraPanelSerializer
-    permission_classes = [EsCreadorDeCursos]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
 
     def get_queryset(self):
         queryset = PalabraDiccionario.objects.select_related("curso")
@@ -95,3 +103,55 @@ def resumen_panel(request):
             "total_usuarios": User.objects.count(),
         }
     )
+
+
+@api_view(["GET"])
+@permission_classes([PUEDE_GESTIONAR_CONTENIDO])
+def estrellas_estudiantes(request):
+    """GET /api/panel/estudiantes/estrellas/ -> estrellas de cada estudiante."""
+    perfiles = PerfilUsuario.objects.select_related("user").order_by("-estrellas")
+    data = [
+        {
+            "usuario": perfil.user.username,
+            "correo": perfil.user.email,
+            "estrellas": perfil.estrellas,
+        }
+        for perfil in perfiles
+    ]
+    return Response(data)
+
+
+@api_view(["POST"])
+@permission_classes([PUEDE_SUBIR_GIF])
+def subir_gif_palabra(request, pk):
+    """POST /api/panel/diccionario/<pk>/gif/ -> sube el gif de una palabra."""
+    palabra = get_object_or_404(PalabraDiccionario, pk=pk)
+    archivo = request.FILES.get("gif")
+    if not archivo:
+        return Response(
+            {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ruta = default_storage.save(f"diccionario_gifs/{archivo.name}", archivo)
+    palabra.video_gif = default_storage.url(ruta)
+    palabra.save(update_fields=["video_gif"])
+    return Response(PalabraPanelSerializer(palabra).data)
+
+
+@api_view(["POST"])
+@permission_classes([PUEDE_SUBIR_GIF])
+def subir_gif_pregunta(request, pk):
+    """POST /api/panel/preguntas/<pk>/gif/ -> sube el gif de una pregunta."""
+    pregunta = get_object_or_404(Pregunta, pk=pk)
+    archivo = request.FILES.get("gif")
+    if not archivo:
+        return Response(
+            {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ruta = default_storage.save(f"evaluacion_gifs/{archivo.name}", archivo)
+    pregunta.video = default_storage.url(ruta)
+    pregunta.save(update_fields=["video"])
+    return Response(PreguntaPanelSerializer(pregunta).data)

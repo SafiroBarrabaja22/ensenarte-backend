@@ -1,6 +1,35 @@
+import uuid
+from pathlib import Path
+
 from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
+
+
+def ruta_recurso_visual(instance, filename):
+    extension = Path(filename).suffix.lower()
+    return f"biblioteca/{uuid.uuid4().hex}{extension}"
+
+
+class RecursoVisual(models.Model):
+    nombre = models.CharField(max_length=120)
+    archivo = models.ImageField(upload_to=ruta_recurso_visual)
+    subido_por = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recursos_visuales",
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("nombre", "id")
+        verbose_name = "Recurso visual"
+        verbose_name_plural = "Recursos visuales"
+
+    def __str__(self):
+        return self.nombre
 
 
 class Curso(models.Model):

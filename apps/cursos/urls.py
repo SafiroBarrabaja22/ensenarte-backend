@@ -8,6 +8,7 @@ router.register("cursos", views_panel.CursoViewSet, basename="panel-cursos")
 router.register("preguntas", views_panel.PreguntaViewSet, basename="panel-preguntas")
 router.register("opciones", views_panel.OpcionViewSet, basename="panel-opciones")
 router.register("diccionario", views_panel.PalabraViewSet, basename="panel-diccionario")
+router.register("recursos", views_panel.RecursoVisualViewSet, basename="panel-recursos")
 
 urlpatterns = [
     # --- Catalogo y contenido ---

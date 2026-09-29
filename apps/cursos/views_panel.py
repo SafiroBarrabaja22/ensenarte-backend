@@ -1,24 +1,28 @@
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from apps.usuarios.models import PerfilUsuario
 
-from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta
+from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta, RecursoVisual
 from .permissions import EsCreadorDeCursos, EsInterprete, EsProfesor
 from .serializers import (
     CursoPanelSerializer,
     OpcionPanelSerializer,
     PalabraPanelSerializer,
     PreguntaPanelSerializer,
+    RecursoVisualSerializer,
 )
 
-# El profesor gestiona contenido (diccionario y evaluaciones) pero no cursos.
-PUEDE_GESTIONAR_CONTENIDO = EsCreadorDeCursos | EsProfesor
-PUEDE_SUBIR_GIF = EsCreadorDeCursos | EsProfesor | EsInterprete
+# Creadores y profesores administran cursos y su contenido.
+PUEDE_GESTIONAR_CURSOS = EsCreadorDeCursos | EsProfesor
+PUEDE_GESTIONAR_CONTENIDO = PUEDE_GESTIONAR_CURSOS
+PUEDE_SUBIR_GIF = PUEDE_GESTIONAR_CONTENIDO | EsInterprete
 
 
 class CursoViewSet(viewsets.ModelViewSet):
@@ -26,7 +30,7 @@ class CursoViewSet(viewsets.ModelViewSet):
 
     queryset = Curso.objects.all()
     serializer_class = CursoPanelSerializer
-    permission_classes = [EsCreadorDeCursos]
+    permission_classes = [PUEDE_GESTIONAR_CURSOS]
 
     def perform_create(self, serializer):
         serializer.save(creado_por=self.request.user)
@@ -90,8 +94,58 @@ class PalabraViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+class RecursoVisualViewSet(viewsets.ModelViewSet):
+    queryset = RecursoVisual.objects.all()
+    serializer_class = RecursoVisualSerializer
+    parser_classes = (JSONParser, MultiPartParser, FormParser)
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        busqueda = self.request.query_params.get("q", "").strip()
+        extension = self.request.query_params.get("extension", "").lower()
+        if busqueda:
+            queryset = queryset.filter(nombre__icontains=busqueda)
+        if extension:
+            queryset = queryset.filter(archivo__iendswith=f".{extension}")
+        return queryset
+
+    def get_permissions(self):
+        if self.action in ("list", "retrieve"):
+            permiso = PUEDE_GESTIONAR_CONTENIDO | EsInterprete
+        else:
+            permiso = EsInterprete
+        return [permiso()]
+
+    def perform_create(self, serializer):
+        serializer.save(subido_por=self.request.user)
+
+    def destroy(self, request, *args, **kwargs):
+        recurso = self.get_object()
+        ruta = f"/{recurso.archivo.url.lstrip('/')}"
+        esta_en_uso = (
+            Curso.objects.filter(
+                Q(portada_curso=ruta)
+                | Q(imagen_diccionario=ruta)
+                | Q(imagen_evaluacion=ruta)
+            ).exists()
+            or PalabraDiccionario.objects.filter(
+                Q(imagen_frontal=ruta) | Q(video_gif=ruta)
+            ).exists()
+            or Pregunta.objects.filter(video=ruta).exists()
+        )
+        if esta_en_uso:
+            return Response(
+                {"detail": "No se puede borrar: el recurso está usado en contenido."},
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        recurso.archivo.delete(save=False)
+        recurso.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 @api_view(["GET"])
-@permission_classes([EsCreadorDeCursos])
+@permission_classes([PUEDE_GESTIONAR_CURSOS])
 def resumen_panel(request):
     """GET /api/panel/resumen/ -> cifras del dashboard."""
     return Response(

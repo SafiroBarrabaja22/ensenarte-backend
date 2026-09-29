@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from rest_framework import serializers
 
 from .models import (
@@ -7,6 +9,7 @@ from .models import (
     PalabraDiccionario,
     Pregunta,
     ProgresoUsuario,
+    RecursoVisual,
 )
 
 
@@ -116,6 +119,40 @@ class IntentoSerializer(serializers.ModelSerializer):
 # ==========================================================
 # ESCRITURA (PANEL ADMINISTRATIVO)
 # ==========================================================
+
+class RecursoVisualSerializer(serializers.ModelSerializer):
+    archivo = serializers.ImageField(write_only=True, required=False)
+    archivo_url = serializers.SerializerMethodField()
+    extension = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RecursoVisual
+        fields = ("id", "nombre", "archivo", "archivo_url", "extension", "fecha_creacion")
+        read_only_fields = ("id", "archivo_url", "extension", "fecha_creacion")
+
+    def validate_archivo(self, archivo):
+        extension = Path(archivo.name).suffix.lower()
+        if extension not in {".png", ".gif", ".jpg", ".jpeg", ".webp"}:
+            raise serializers.ValidationError(
+                "Formatos permitidos: PNG, GIF, JPG, JPEG y WebP."
+            )
+        if archivo.size > 10 * 1024 * 1024:
+            raise serializers.ValidationError("El archivo no puede superar 10 MB.")
+        return archivo
+
+    def validate(self, attrs):
+        if self.instance is None and "archivo" not in attrs:
+            raise serializers.ValidationError(
+                {"archivo": "Debes seleccionar una imagen."}
+            )
+        return attrs
+
+    def get_archivo_url(self, obj):
+        return f"/{obj.archivo.url.lstrip('/')}"
+
+    def get_extension(self, obj):
+        return Path(obj.archivo.name).suffix.lower().lstrip(".")
+
 
 class CursoPanelSerializer(serializers.ModelSerializer):
     creado_por = serializers.CharField(

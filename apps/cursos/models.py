@@ -12,8 +12,19 @@ def ruta_recurso_visual(instance, filename):
 
 
 class RecursoVisual(models.Model):
+    class Categoria(models.TextChoices):
+        RECURSO = "recurso", "Recurso de curso"
+        AVATAR = "avatar", "Avatar"
+        INSIGNIA = "insignia", "Insignia de curso"
+
     nombre = models.CharField(max_length=120)
     archivo = models.ImageField(upload_to=ruta_recurso_visual)
+    categoria = models.CharField(
+        max_length=12,
+        choices=Categoria.choices,
+        default=Categoria.RECURSO,
+        db_index=True,
+    )
     subido_por = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -43,6 +54,7 @@ class Curso(models.Model):
     )
     imagen_diccionario = models.CharField(max_length=255)
     imagen_evaluacion = models.CharField(max_length=255)
+    insignia = models.CharField(max_length=255, blank=True, default="")
     descripcion = models.TextField(blank=True, null=True)
 
     creado_por = models.ForeignKey(

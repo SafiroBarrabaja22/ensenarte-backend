@@ -5,6 +5,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.usuarios.models import PerfilUsuario
@@ -103,6 +104,19 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         queryset = super().get_queryset()
         busqueda = self.request.query_params.get("q", "").strip()
         extension = self.request.query_params.get("extension", "").lower()
+        categoria = self.request.query_params.get("categoria", "").lower()
+        usuario = self.request.user
+        puede_ver_todo = bool(
+            usuario.is_superuser
+            or usuario.is_staff
+            or usuario.groups.filter(
+                name__in=("CreadorDeCursos", "Profesor", "Interprete")
+            ).exists()
+        )
+        if not puede_ver_todo:
+            queryset = queryset.filter(categoria=RecursoVisual.Categoria.AVATAR)
+        if categoria:
+            queryset = queryset.filter(categoria=categoria)
         if busqueda:
             queryset = queryset.filter(nombre__icontains=busqueda)
         if extension:
@@ -111,10 +125,9 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ("list", "retrieve"):
-            permiso = PUEDE_GESTIONAR_CONTENIDO | EsInterprete
+            return [IsAuthenticated()]
         else:
-            permiso = EsInterprete
-        return [permiso()]
+            return [EsInterprete()]
 
     def perform_create(self, serializer):
         serializer.save(subido_por=self.request.user)
@@ -127,11 +140,13 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
                 Q(portada_curso=ruta)
                 | Q(imagen_diccionario=ruta)
                 | Q(imagen_evaluacion=ruta)
+                | Q(insignia=ruta)
             ).exists()
             or PalabraDiccionario.objects.filter(
                 Q(imagen_frontal=ruta) | Q(video_gif=ruta)
             ).exists()
             or Pregunta.objects.filter(video=ruta).exists()
+            or PerfilUsuario.objects.filter(avatar=ruta).exists()
         )
         if esta_en_uso:
             return Response(

@@ -6,7 +6,18 @@ from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
+from apps.cursos.models import RecursoVisual
+
 from .models import PerfilUsuario
+
+AVATARES_ANTERIORES = {
+    "imgPredeterminadaUsuario.png",
+    "opcionUnoPerfil.png",
+    "opcionDosPerfil.png",
+    "opcionTresPerfil.png",
+    "opcionCuatroPerfil.png",
+    "opcionCincoPerfil.png",
+}
 
 
 class PerfilSerializer(serializers.ModelSerializer):
@@ -127,6 +138,21 @@ class ActualizarPerfilSerializer(serializers.Serializer):
         if User.objects.filter(email__iexact=value).exclude(pk=user.pk).exists():
             raise serializers.ValidationError("Ese correo ya esta registrado.")
         return value
+
+    def validate_avatar(self, value):
+        if value in AVATARES_ANTERIORES:
+            return value
+        prefijo = "/media/"
+        if value.startswith(prefijo):
+            ruta = value[len(prefijo):]
+            if RecursoVisual.objects.filter(
+                archivo=ruta,
+                categoria=RecursoVisual.Categoria.AVATAR,
+            ).exists():
+                return value
+        raise serializers.ValidationError(
+            "Selecciona un avatar disponible en la biblioteca."
+        )
 
     def update(self, instance, validated_data):
         user = instance.user

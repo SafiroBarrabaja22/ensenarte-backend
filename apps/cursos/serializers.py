@@ -2,6 +2,21 @@ from pathlib import Path
 
 from rest_framework import serializers
 
+FORMATOS_IMAGEN_PERMITIDOS = {
+    ".png",
+    ".gif",
+    ".jpg",
+    ".jpeg",
+    ".jfif",
+    ".webp",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".avif",
+    ".heic",
+    ".heif",
+}
+
 from .models import (
     Curso,
     IntentoEvaluacion,
@@ -35,6 +50,7 @@ class CursoSerializer(serializers.ModelSerializer):
             "portada_curso",
             "imagen_diccionario",
             "imagen_evaluacion",
+            "insignia",
             "activo",
             "total_preguntas",
             "total_palabras",
@@ -73,17 +89,23 @@ class PreguntaPublicaSerializer(serializers.ModelSerializer):
 class ProgresoSerializer(serializers.ModelSerializer):
     curso = serializers.CharField(source="curso.nombre", read_only=True)
     curso_titulo = serializers.CharField(source="curso.titulo", read_only=True)
+    curso_insignia = serializers.SerializerMethodField()
 
     class Meta:
         model = ProgresoUsuario
         fields = (
             "curso",
             "curso_titulo",
+            "curso_insignia",
             "aciertos",
             "errores",
             "completado",
             "fecha_ultima_actividad",
         )
+
+    def get_curso_insignia(self, obj):
+        insignia = getattr(obj.curso, "insignia", "") or ""
+        return f"/{insignia.lstrip('/')}" if insignia else ""
 
 
 class IntentoSerializer(serializers.ModelSerializer):
@@ -127,14 +149,28 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = RecursoVisual
-        fields = ("id", "nombre", "archivo", "archivo_url", "extension", "fecha_creacion")
+        fields = (
+            "id",
+            "nombre",
+            "archivo",
+            "archivo_url",
+            "extension",
+            "categoria",
+            "fecha_creacion",
+        )
         read_only_fields = ("id", "archivo_url", "extension", "fecha_creacion")
 
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.instance is not None:
+            fields["categoria"].read_only = True
+        return fields
+
     def validate_archivo(self, archivo):
-        extension = Path(archivo.name).suffix.lower()
-        if extension not in {".png", ".gif", ".jpg", ".jpeg", ".webp"}:
+        extension = Path(archivo.name or "").suffix.lower()
+        if extension not in FORMATOS_IMAGEN_PERMITIDOS:
             raise serializers.ValidationError(
-                "Formatos permitidos: PNG, GIF, JPG, JPEG y WebP."
+                "Formatos permitidos: PNG, GIF, JPG, JPEG, JFIF, WEBP, BMP, TIFF, AVIF, HEIC y HEIF."
             )
         if archivo.size > 10 * 1024 * 1024:
             raise serializers.ValidationError("El archivo no puede superar 10 MB.")
@@ -169,6 +205,7 @@ class CursoPanelSerializer(serializers.ModelSerializer):
             "portada_curso",
             "imagen_diccionario",
             "imagen_evaluacion",
+            "insignia",
             "activo",
             "creado_por",
             "fecha_creacion",

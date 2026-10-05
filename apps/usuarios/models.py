@@ -15,9 +15,9 @@ class PerfilUsuario(models.Model):
         help_text="Foto subida por el usuario. Si esta vacia el frontend usa un avatar por defecto.",
     )
     avatar = models.CharField(
-        max_length=100,
+        max_length=500,
         default="imgPredeterminadaUsuario.png",
-        help_text="Nombre del avatar predefinido dentro de assets/imagenes del frontend.",
+        help_text="Nombre del avatar anterior o ruta de una imagen de la biblioteca.",
     )
     estrellas = models.PositiveIntegerField(default=0)
 

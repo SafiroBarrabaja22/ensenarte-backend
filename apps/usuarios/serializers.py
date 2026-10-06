@@ -125,7 +125,7 @@ class ActualizarPerfilSerializer(serializers.Serializer):
     nombre = serializers.CharField(max_length=150, required=False)
     correo = serializers.EmailField(required=False)
     avatar = serializers.CharField(max_length=100, required=False)
-    foto_perfil = serializers.ImageField(required=False)
+    foto_perfil = serializers.ImageField(required=False, allow_null=True)
 
     def validate_nombre(self, value):
         user = self.context["request"].user
@@ -165,7 +165,10 @@ class ActualizarPerfilSerializer(serializers.Serializer):
         if "avatar" in validated_data:
             instance.avatar = validated_data["avatar"]
         if "foto_perfil" in validated_data:
-            instance.foto_perfil = validated_data["foto_perfil"]
+            foto_perfil = validated_data["foto_perfil"]
+            if foto_perfil is None and instance.foto_perfil:
+                instance.foto_perfil.delete(save=False)
+            instance.foto_perfil = foto_perfil
         instance.save()
         return instance
 

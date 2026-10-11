@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     # Propias
     "apps.usuarios",
     "apps.cursos",
+    "apps.evaluacion_camara",
 ]
 
 MIDDLEWARE = [
@@ -115,6 +116,17 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": False,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+
+# ==========================================================
+# EVALUACION CON CAMARA
+# ==========================================================
+# Aprobado si correctas * 100 >= UMBRAL * total (comparacion en enteros).
+
+EVALUACION_CAMARA_UMBRAL_APROBACION = env.int(
+    "EVALUACION_CAMARA_UMBRAL_APROBACION", default=70
+)
+EVALUACION_CAMARA_MAX_INTENTOS = 50
 
 
 # ==========================================================

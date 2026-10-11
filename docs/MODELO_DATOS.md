@@ -8,6 +8,8 @@ erDiagram
     USER ||--o{ CURSO : "crea"
     USER ||--o{ PROGRESO_USUARIO : "registra"
     USER ||--o{ INTENTO_EVALUACION : "realiza"
+    USER ||--o{ EVALUACION_CAMARA : "presenta"
+    EVALUACION_CAMARA ||--o{ INTENTO_CAMARA : "agrupa"
 
     CURSO ||--o{ PREGUNTA : "contiene"
     CURSO ||--o{ PALABRA_DICCIONARIO : "contiene"
@@ -91,6 +93,27 @@ erDiagram
         bool finalizado
         datetime fecha_inicio
         datetime fecha_actualizacion
+    }
+
+    EVALUACION_CAMARA {
+        int id PK
+        int usuario_id FK
+        int total
+        int correctas
+        int porcentaje
+        bool aprobado
+        int umbral_aplicado
+        datetime fecha
+    }
+
+    INTENTO_CAMARA {
+        int id PK
+        int evaluacion_id FK
+        int orden
+        string letra_objetivo
+        bool acerto
+        int tiempo_ms
+        float confianza "nullable"
     }
 ```
 
@@ -186,6 +209,34 @@ guardaba en `request.session`.
 
 Solo puede haber un intento con `finalizado = False` por usuario y curso;
 `iniciar/` elimina el anterior antes de crear uno nuevo.
+
+### `EvaluacionCamara` (app `evaluacion_camara`)
+
+Una sesión de la evaluación con cámara. Todos los campos numéricos y
+`aprobado` los calcula el servidor a partir de los intentos.
+
+| Campo | Tipo | Nulo | Descripción |
+|---|---|---|---|
+| `usuario` | FK → User | No | Cascada. |
+| `total` | PositiveInteger | No | Número de intentos. |
+| `correctas` | PositiveInteger | No | Intentos con `acerto = True`. |
+| `porcentaje` | PositiveInteger | No | `correctas * 100 // total`. |
+| `aprobado` | Boolean | No | `correctas * 100 >= umbral_aplicado * total`. |
+| `umbral_aplicado` | PositiveInteger | No | Umbral vigente al guardar (configurable, por defecto 70). |
+| `fecha` | DateTime | No | Creación de la sesión. |
+
+### `IntentoCamara`
+
+Una letra intentada dentro de una sesión.
+
+| Campo | Tipo | Nulo | Descripción |
+|---|---|---|---|
+| `evaluacion` | FK → EvaluacionCamara | No | Cascada. |
+| `orden` | PositiveInteger | No | Posición dentro de la sesión (desde 0). |
+| `letra_objetivo` | Char(2) | No | Letra pedida, en mayúscula. |
+| `acerto` | Boolean | No | Lo decide el reconocedor del navegador. |
+| `tiempo_ms` | PositiveInteger | No | Tiempo que tardó el intento. |
+| `confianza` | Float | Sí | Confianza del clasificador, entre 0 y 1. |
 
 ---
 

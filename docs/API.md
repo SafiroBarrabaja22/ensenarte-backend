@@ -278,7 +278,7 @@ Escala de mensajes: 0 errores → felicitación; hasta 15 → ánimo; hasta 30 �
 
 ---
 
-<<<<<<< Updated upstream
+Updated upstream
 # 4. Panel administrativo
 =======
 # Historial de intentos por curso

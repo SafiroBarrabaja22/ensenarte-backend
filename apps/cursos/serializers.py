@@ -39,6 +39,7 @@ class CursoSerializer(serializers.ModelSerializer):
     total_palabras = serializers.IntegerField(
         source="diccionario.count", read_only=True
     )
+    insignia_100 = serializers.SerializerMethodField()
 
     class Meta:
         model = Curso
@@ -51,10 +52,21 @@ class CursoSerializer(serializers.ModelSerializer):
             "imagen_diccionario",
             "imagen_evaluacion",
             "insignia",
+            "insignia_100",
             "activo",
             "total_preguntas",
             "total_palabras",
         )
+
+    def get_insignia_100(self, obj):
+        recurso = obj.insignia_100
+        if not recurso or not recurso.archivo:
+            return None
+        return {
+            "id": recurso.id,
+            "nombre": recurso.nombre,
+            "imagen": f"/{recurso.archivo.url.lstrip('/')}",
+        }
 
 
 class PalabraDiccionarioSerializer(serializers.ModelSerializer):
@@ -90,6 +102,8 @@ class ProgresoSerializer(serializers.ModelSerializer):
     curso = serializers.CharField(source="curso.nombre", read_only=True)
     curso_titulo = serializers.CharField(source="curso.titulo", read_only=True)
     curso_insignia = serializers.SerializerMethodField()
+    curso_insignia_tipo = serializers.SerializerMethodField()
+    curso_insignia_nombre = serializers.SerializerMethodField()
 
     class Meta:
         model = ProgresoUsuario
@@ -97,6 +111,9 @@ class ProgresoSerializer(serializers.ModelSerializer):
             "curso",
             "curso_titulo",
             "curso_insignia",
+            "curso_insignia_tipo",
+            "curso_insignia_nombre",
+            "insignia_100_ganada",
             "aciertos",
             "errores",
             "completado",
@@ -104,8 +121,19 @@ class ProgresoSerializer(serializers.ModelSerializer):
         )
 
     def get_curso_insignia(self, obj):
+        recurso_100 = obj.curso.insignia_100
+        if obj.insignia_100_ganada and recurso_100 and recurso_100.archivo:
+            return f"/{recurso_100.archivo.url.lstrip('/')}"
         insignia = getattr(obj.curso, "insignia", "") or ""
         return f"/{insignia.lstrip('/')}" if insignia else ""
+
+    def get_curso_insignia_tipo(self, obj):
+        return "curso_100" if obj.insignia_100_ganada and obj.curso.insignia_100_id else "curso_completado"
+
+    def get_curso_insignia_nombre(self, obj):
+        if obj.insignia_100_ganada and obj.curso.insignia_100_id:
+            return "Curso 100%"
+        return "Curso completado"
 
 
 class IntentoSerializer(serializers.ModelSerializer):
@@ -194,6 +222,15 @@ class CursoPanelSerializer(serializers.ModelSerializer):
     creado_por = serializers.CharField(
         source="creado_por.username", read_only=True
     )
+    insignia_100 = serializers.PrimaryKeyRelatedField(
+        queryset=RecursoVisual.objects.filter(
+            categoria=RecursoVisual.Categoria.CURSO_100
+        ),
+        allow_null=True,
+        required=False,
+    )
+    insignia_100_nombre = serializers.SerializerMethodField()
+    insignia_100_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Curso
@@ -206,12 +243,24 @@ class CursoPanelSerializer(serializers.ModelSerializer):
             "imagen_diccionario",
             "imagen_evaluacion",
             "insignia",
+            "insignia_100",
+            "insignia_100_nombre",
+            "insignia_100_url",
             "activo",
             "creado_por",
             "fecha_creacion",
             "fecha_modificacion",
         )
         read_only_fields = ("creado_por", "fecha_creacion", "fecha_modificacion")
+
+    def get_insignia_100_url(self, obj):
+        recurso = obj.insignia_100
+        if not recurso or not recurso.archivo:
+            return ""
+        return f"/{recurso.archivo.url.lstrip('/')}"
+
+    def get_insignia_100_nombre(self, obj):
+        return obj.insignia_100.nombre if obj.insignia_100_id else ""
 
 
 class OpcionPanelSerializer(serializers.ModelSerializer):

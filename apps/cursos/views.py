@@ -1,6 +1,7 @@
 import random
 
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -61,7 +62,9 @@ def diccionario_curso(request, slug):
 @permission_classes([IsAuthenticated])
 def mi_progreso(request):
     """GET /api/progreso/ -> progreso del usuario en todos los cursos."""
-    progresos = ProgresoUsuario.objects.filter(usuario=request.user)
+    progresos = ProgresoUsuario.objects.filter(usuario=request.user).select_related(
+        "curso", "curso__insignia_100"
+    )
     return Response(ProgresoSerializer(progresos, many=True).data)
 
 
@@ -127,10 +130,21 @@ def evaluacion_actual(request, slug):
     return Response(IntentoSerializer(intento).data)
 
 
+@transaction.atomic
 def _cerrar_intento(intento):
     """Consolida el intento en ProgresoUsuario y otorga estrellas."""
     intento.finalizado = True
     intento.save()
+
+    antiguos = list(
+        IntentoEvaluacion.objects.filter(
+            usuario=intento.usuario, curso=intento.curso, finalizado=True
+        )
+        .order_by("-fecha_inicio", "-id")
+        .values_list("id", flat=True)[5:]
+    )
+    if antiguos:
+        IntentoEvaluacion.objects.filter(id__in=antiguos).delete()
 
     progreso, _ = ProgresoUsuario.objects.get_or_create(
         usuario=intento.usuario, curso=intento.curso
@@ -138,6 +152,13 @@ def _cerrar_intento(intento):
     progreso.aciertos = intento.aciertos
     progreso.errores = intento.errores
     progreso.completado = True
+    insignia_100_nueva = (
+        intento.total_preguntas > 0
+        and intento.aciertos == intento.total_preguntas
+        and not progreso.insignia_100_ganada
+    )
+    if intento.total_preguntas > 0 and intento.aciertos == intento.total_preguntas:
+        progreso.insignia_100_ganada = True
     progreso.save()
 
     perfil, _ = PerfilUsuario.objects.get_or_create(user=intento.usuario)
@@ -147,7 +168,7 @@ def _cerrar_intento(intento):
         ).count()
     )
     perfil.save()
-    return progreso
+    return progreso, insignia_100_nueva
 
 
 @api_view(["POST"])
@@ -168,9 +189,9 @@ def responder_evaluacion(request, slug):
 
     pregunta_id = intento.pregunta_actual_id()
     if pregunta_id is None:
-        _cerrar_intento(intento)
+        _, insignia_100_nueva = _cerrar_intento(intento)
         return Response(
-            {"finalizado": True, "resultado": _resultado(intento)},
+            {"finalizado": True, "resultado": _resultado(intento, insignia_100_nueva)},
         )
 
     opcion_id = request.data.get("opcion_id")
@@ -193,13 +214,13 @@ def responder_evaluacion(request, slug):
         intento.save()
 
         if finalizado:
-            _cerrar_intento(intento)
+            _, insignia_100_nueva = _cerrar_intento(intento)
             return Response(
                 {
                     "correcta": True,
                     "mensaje": "Correcto.",
                     "finalizado": True,
-                    "resultado": _resultado(intento),
+                    "resultado": _resultado(intento, insignia_100_nueva),
                 }
             )
 
@@ -227,13 +248,36 @@ def responder_evaluacion(request, slug):
     )
 
 
-def _resultado(intento):
+def _resultado(intento, insignia_100_nueva=False):
+    progreso = ProgresoUsuario.objects.filter(
+        usuario=intento.usuario, curso=intento.curso
+    ).select_related("curso__insignia_100").first()
+    recurso = progreso.curso.insignia_100 if progreso and progreso.insignia_100_ganada else None
+    imagen = f"/{recurso.archivo.url.lstrip('/')}" if recurso and recurso.archivo else ""
+    falladas = set(intento.falladas or [])
+    preguntas = Pregunta.objects.in_bulk(intento.orden or [])
+    detalle_preguntas = [
+        {
+            "etiqueta": str(indice + 1),
+            "texto": preguntas[pregunta_id].texto,
+            "acierto": pregunta_id not in falladas,
+            "detalle": "Correcta" if pregunta_id not in falladas else "Incorrecta",
+        }
+        for indice, pregunta_id in enumerate(intento.orden or [])
+        if pregunta_id in preguntas
+    ]
     return {
         "curso": intento.curso.nombre,
         "curso_titulo": intento.curso.titulo,
         "aciertos": intento.aciertos,
         "errores": intento.errores,
+        "total": intento.total_preguntas,
+        "porcentaje": round(intento.aciertos * 100 / intento.total_preguntas) if intento.total_preguntas else 0,
+        "detalle_preguntas": detalle_preguntas,
         "mensaje": intento.mensaje_retroalimentacion(),
+        "insignia_100_ganada": bool(progreso and progreso.insignia_100_ganada),
+        "insignia_100_nueva": bool(insignia_100_nueva and imagen),
+        "insignia_100": {"nombre": "Curso 100%", "imagen": imagen} if imagen else None,
     }
 
 
@@ -255,3 +299,23 @@ def resultado_evaluacion(request, slug):
             status=status.HTTP_404_NOT_FOUND,
         )
     return Response(_resultado(intento))
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def historial_evaluacion(request, slug):
+    """GET /cursos/<slug>/evaluacion/historial/ -> intentos finalizados del usuario."""
+    curso = get_object_or_404(Curso, nombre=slug, activo=True)
+    intentos = IntentoEvaluacion.objects.filter(
+        usuario=request.user, curso=curso, finalizado=True
+    ).order_by("-fecha_inicio", "-id")[:5]
+    return Response([
+        {
+            "id": intento.id,
+            "aciertos": intento.aciertos,
+            "errores": intento.errores,
+            "total": intento.total_preguntas,
+            "fecha": intento.fecha_inicio,
+        }
+        for intento in reversed(list(intentos))
+    ])

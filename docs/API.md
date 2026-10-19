@@ -278,7 +278,114 @@ Escala de mensajes: 0 errores → felicitación; hasta 15 → ánimo; hasta 30 �
 
 ---
 
+<<<<<<< Updated upstream
 # 4. Panel administrativo
+=======
+# Historial de intentos por curso
+
+## GET `/cursos/<slug>/evaluacion/historial/`
+
+Autenticado. Devuelve como máximo los cinco intentos finalizados más recientes
+del usuario para ese curso, ordenados del más antiguo al más reciente. Cada
+elemento incluye `aciertos`, `errores`, `total` de preguntas y `fecha`. Los
+intentos anteriores se eliminan al finalizar un sexto intento.
+
+---
+
+# 4. Evaluación con cámara
+
+El usuario hace con la mano letras del abecedario frente a la cámara y el
+**navegador** las reconoce (MediaPipe + KNN, ver [`ml/README.md`](../ml/README.md)).
+El video nunca llega al servidor: al terminar la sesión el frontend envía todos
+los intentos en una sola petición. Es independiente de la evaluación por curso
+de la sección 3.
+
+## POST `/evaluacion-camara/`
+
+Autenticado. Guarda una sesión y devuelve el resultado calculado por el servidor.
+
+```json
+{
+  "curso": "abecedario",
+  "intentos": [
+    { "letra_objetivo": "A", "acerto": true,  "tiempo_ms": 2300, "confianza": 0.8 },
+    { "letra_objetivo": "B", "acerto": false, "tiempo_ms": 20000 }
+  ]
+}
+```
+
+| Campo | Regla |
+|---|---|
+| `curso` | Slug del curso de la sesión, obligatorio; el historial y la insignia se vinculan a este curso. |
+| `intentos` | Obligatorio, entre 1 y 50 elementos (`EVALUACION_CAMARA_MAX_INTENTOS`) |
+| `letra_objetivo` | 1 o 2 caracteres; se recortan espacios y se guarda en mayúscula (`"ll"` → `"LL"`) |
+| `acerto` | Booleano, obligatorio |
+| `tiempo_ms` | Entero ≥ 0, obligatorio |
+| `confianza` | Opcional (o `null`), número entre 0 y 1 |
+
+`total`, `correctas`, `porcentaje`, `aprobado` y `umbral_aplicado` **los
+calcula el servidor**. Si el cliente los envía se ignoran (son de solo lectura).
+
+- `total` = número de intentos; `correctas` = intentos con `acerto: true`.
+- `porcentaje` = `correctas * 100 // total` (entero, redondeado hacia abajo).
+- `aprobado` = `correctas * 100 >= umbral * total`, todo en enteros.
+- `umbral_aplicado` = umbral vigente al guardar. Por defecto 70; se cambia con
+  la variable de entorno `EVALUACION_CAMARA_UMBRAL_APROBACION`.
+
+Así, 7/10 aprueba y 6/10 no. Respuesta **201**:
+
+```json
+{
+  "id": 12,
+  "fecha": "2026-10-10T15:54:17.596285-05:00",
+  "total": 10,
+  "correctas": 7,
+  "porcentaje": 70,
+  "aprobado": true,
+  "umbral_aplicado": 70,
+  "intentos": [
+    { "letra_objetivo": "A", "acerto": true, "tiempo_ms": 2300, "confianza": 0.8 }
+  ]
+}
+```
+
+(`intentos` se devuelve completo; aquí se recorta.) **400** si algo no cumple
+las reglas, con el error indexado por la posición del intento (desde 0). No
+se guarda nada si un solo intento es inválido:
+
+```json
+{ "intentos": { "1": { "tiempo_ms": ["Asegúrese de que este valor es mayor o igual a 0."] } } }
+```
+
+```json
+{ "intentos": ["Envia al menos un intento."] }
+```
+
+## GET `/evaluacion-camara/?curso=<slug>`
+
+Autenticado. Historial de sesiones **del usuario autenticado y del curso
+indicado** (nunca las de otros usuarios), de la más reciente a la más antigua,
+paginado y limitado a cinco sesiones por curso. Una sesión perfecta establece
+permanentemente `insignia_100_ganada` en el progreso del usuario. El recurso
+configurado como insignia `curso_100` reemplaza la insignia de curso completado
+en el perfil.
+
+```json
+{
+  "count": 2,
+  "next": null,
+  "previous": null,
+  "results": [
+    { "id": 12, "fecha": "...", "total": 10, "correctas": 7, "porcentaje": 70,
+      "aprobado": true, "umbral_aplicado": 70, "intentos": [ ... ] }
+  ]
+}
+```
+
+---
+
+# 5. Panel administrativo
+>>>>>>> Stashed changes
 
 Todo bajo `/panel/` exige autenticación y, además, uno de estos grupos (o ser
 `staff`/superusuario, que siempre tienen acceso total). En caso contrario

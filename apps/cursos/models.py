@@ -16,6 +16,7 @@ class RecursoVisual(models.Model):
         RECURSO = "recurso", "Recurso de curso"
         AVATAR = "avatar", "Avatar"
         INSIGNIA = "insignia", "Insignia de curso"
+        CURSO_100 = "curso_100", "Curso 100%"
 
     nombre = models.CharField(max_length=120)
     archivo = models.ImageField(upload_to=ruta_recurso_visual)
@@ -55,6 +56,14 @@ class Curso(models.Model):
     imagen_diccionario = models.CharField(max_length=255)
     imagen_evaluacion = models.CharField(max_length=255)
     insignia = models.CharField(max_length=255, blank=True, default="")
+    insignia_100 = models.ForeignKey(
+        RecursoVisual,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="cursos_insignia_100",
+        limit_choices_to={"categoria": RecursoVisual.Categoria.CURSO_100},
+    )
     descripcion = models.TextField(blank=True, null=True)
 
     creado_por = models.ForeignKey(
@@ -140,6 +149,7 @@ class ProgresoUsuario(models.Model):
     aciertos = models.PositiveIntegerField(default=0)
     errores = models.PositiveIntegerField(default=0)
     completado = models.BooleanField(default=False)
+    insignia_100_ganada = models.BooleanField(default=False)
     fecha_ultima_actividad = models.DateTimeField(auto_now=True)
 
     class Meta:

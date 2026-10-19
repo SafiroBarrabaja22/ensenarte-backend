@@ -142,6 +142,7 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
                 | Q(imagen_evaluacion=ruta)
                 | Q(insignia=ruta)
             ).exists()
+            or Curso.objects.filter(insignia_100=recurso).exists()
             or PalabraDiccionario.objects.filter(
                 Q(imagen_frontal=ruta) | Q(video_gif=ruta)
             ).exists()

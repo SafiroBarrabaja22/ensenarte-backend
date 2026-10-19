@@ -42,6 +42,11 @@ urlpatterns = [
         views.resultado_evaluacion,
         name="resultado_evaluacion",
     ),
+    path(
+        "cursos/<slug:slug>/evaluacion/historial/",
+        views.historial_evaluacion,
+        name="historial_evaluacion",
+    ),
 
     # --- Panel administrativo ---
     path("panel/resumen/", views_panel.resumen_panel, name="resumen_panel"),

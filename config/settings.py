@@ -23,6 +23,13 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env("DEBUG")
 ALLOWED_HOSTS = env("ALLOWED_HOSTS")
 
+# Evaluacion con camara: una sesion cubre el abecedario completo y requiere
+# al menos 70 % para aprobar. Se pueden ajustar desde el archivo .env.
+EVALUACION_CAMARA_MAX_INTENTOS = env.int("EVALUACION_CAMARA_MAX_INTENTOS", default=50)
+EVALUACION_CAMARA_UMBRAL_APROBACION = env.int(
+    "EVALUACION_CAMARA_UMBRAL_APROBACION", default=70
+)
+
 
 # ==========================================================
 # APLICACIONES
@@ -41,6 +48,7 @@ INSTALLED_APPS = [
     # Propias
     "apps.usuarios",
     "apps.cursos",
+    "apps.evaluacion_camara",
 ]
 
 MIDDLEWARE = [

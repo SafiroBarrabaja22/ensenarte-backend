@@ -22,3 +22,11 @@ db.sqlite3-journal
 .idea/
 .DS_Store
 Thumbs.db
+
+# ML (scripts de entrenamiento en ml/; datos y artefactos fuera de git)
+.venv*/
+ml/data/
+ml/*.csv
+ml/salida_prueba/
+ml/modelo_knn.json
+ml/prueba-web/

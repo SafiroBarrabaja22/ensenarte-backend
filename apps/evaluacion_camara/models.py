@@ -4,7 +4,6 @@ from django.db import models
 
 from apps.cursos.models import Curso
 
-
 class EvaluacionCamara(models.Model):
     """
     Una sesion de evaluacion con camara (abecedario hecho con la mano).

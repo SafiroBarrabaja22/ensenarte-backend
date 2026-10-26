@@ -32,7 +32,10 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
 
     intentos = IntentoCamaraSerializer(many=True)
     curso = serializers.SlugRelatedField(
-        slug_field="nombre", queryset=Curso.objects.filter(activo=True), allow_null=True
+        slug_field="nombre",
+        queryset=Curso.objects.filter(activo=True),
+        required=False,
+        allow_null=True,
     )
     insignia_100_ganada = serializers.SerializerMethodField()
     insignia_100_nueva = serializers.SerializerMethodField()
@@ -81,7 +84,7 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
         total = len(intentos)
         correctas = sum(1 for i in intentos if i["acerto"])
 
-        curso = validated_data["curso"]
+        curso = validated_data.pop("curso", None)
         evaluacion = EvaluacionCamara.objects.create(
             usuario=validated_data["usuario"],
             curso=curso,
@@ -109,7 +112,7 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
 
         progreso = None
         insignia_100_nueva = False
-        if evaluacion.aprobado or evaluacion.porcentaje == 100:
+        if curso and (evaluacion.aprobado or evaluacion.porcentaje == 100):
             progreso, _ = ProgresoUsuario.objects.get_or_create(
                 usuario=evaluacion.usuario, curso=curso
             )
@@ -153,7 +156,11 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
 
     def get_insignia_100(self, obj):
         progreso = self._progreso(obj)
-        recurso = progreso.curso.insignia_100 if progreso and progreso.insignia_100_ganada else None
+        recurso = (
+            progreso.curso.insignia_100
+            if progreso and progreso.insignia_100_ganada
+            else None
+        )
         if not recurso or not recurso.archivo:
             return None
         return {"nombre": "Curso 100%", "imagen": f"/{recurso.archivo.url.lstrip('/')}"}

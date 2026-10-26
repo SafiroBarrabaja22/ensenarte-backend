@@ -126,6 +126,17 @@ SIMPLE_JWT = {
 
 
 # ==========================================================
+# EVALUACION CON CAMARA
+# ==========================================================
+# Aprobado si correctas * 100 >= UMBRAL * total (comparacion en enteros).
+
+EVALUACION_CAMARA_UMBRAL_APROBACION = env.int(
+    "EVALUACION_CAMARA_UMBRAL_APROBACION", default=70
+)
+EVALUACION_CAMARA_MAX_INTENTOS = 50
+
+
+# ==========================================================
 # CORS (el frontend vive en otro dominio/puerto)
 # ==========================================================
 

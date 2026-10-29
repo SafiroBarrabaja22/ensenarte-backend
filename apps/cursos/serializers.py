@@ -34,12 +34,8 @@ from .media_utils import extension_archivo, url_archivo
 # ==========================================================
 
 class CursoSerializer(serializers.ModelSerializer):
-    total_preguntas = serializers.IntegerField(
-        source="preguntas.count", read_only=True
-    )
-    total_palabras = serializers.IntegerField(
-        source="diccionario.count", read_only=True
-    )
+    total_preguntas = serializers.IntegerField(read_only=True)
+    total_palabras = serializers.IntegerField(read_only=True)
     insignia_100 = serializers.SerializerMethodField()
 
     class Meta:

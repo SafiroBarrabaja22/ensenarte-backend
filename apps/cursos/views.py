@@ -2,6 +2,7 @@ import random
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.db.models import Count
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -29,11 +30,18 @@ from .media_utils import url_archivo
 # CATALOGO PUBLICO
 # ==========================================================
 
+def cursos_con_totales():
+    return Curso.objects.annotate(
+        total_preguntas=Count("preguntas", distinct=True),
+        total_palabras=Count("diccionario", distinct=True),
+    ).select_related("insignia_100")
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def lista_cursos(request):
     """GET /api/cursos/ -> catalogo visible sin iniciar sesion."""
-    cursos = Curso.objects.filter(activo=True)
+    cursos = cursos_con_totales().filter(activo=True)
     return Response(CursoSerializer(cursos, many=True).data)
 
 
@@ -41,7 +49,7 @@ def lista_cursos(request):
 @permission_classes([AllowAny])
 def detalle_curso(request, slug):
     """GET /api/cursos/<slug>/"""
-    curso = get_object_or_404(Curso, nombre=slug, activo=True)
+    curso = get_object_or_404(cursos_con_totales(), nombre=slug, activo=True)
     return Response(CursoSerializer(curso).data)
 
 
@@ -49,7 +57,7 @@ def detalle_curso(request, slug):
 @permission_classes([IsAuthenticated])
 def diccionario_curso(request, slug):
     """GET /api/cursos/<slug>/diccionario/"""
-    curso = get_object_or_404(Curso, nombre=slug, activo=True)
+    curso = get_object_or_404(cursos_con_totales(), nombre=slug, activo=True)
     palabras = curso.diccionario.all()
     return Response(
         {

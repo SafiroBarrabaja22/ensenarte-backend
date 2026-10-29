@@ -1,9 +1,18 @@
+import time
+import uuid
+
+import cloudinary.api
+import cloudinary.exceptions
+import cloudinary.uploader
+import cloudinary.utils
 from django.contrib.auth.models import User
+from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -15,6 +24,7 @@ from .permissions import EsCreadorDeCursos, EsInterprete, EsProfesor
 from .media_utils import extension_archivo, url_archivo
 from .serializers import (
     CursoPanelSerializer,
+    FORMATOS_IMAGEN_PERMITIDOS,
     OpcionPanelSerializer,
     PalabraPanelSerializer,
     PreguntaPanelSerializer,
@@ -25,6 +35,13 @@ from .serializers import (
 PUEDE_GESTIONAR_CURSOS = EsCreadorDeCursos | EsProfesor
 PUEDE_GESTIONAR_CONTENIDO = PUEDE_GESTIONAR_CURSOS
 PUEDE_SUBIR_GIF = PUEDE_GESTIONAR_CONTENIDO | EsInterprete
+TAMANO_MAXIMO_RECURSO = 10 * 1024 * 1024
+
+
+class RecursoVisualPagination(PageNumberPagination):
+    page_size = 24
+    page_size_query_param = "page_size"
+    max_page_size = 60
 
 
 class CursoViewSet(viewsets.ModelViewSet):
@@ -96,10 +113,18 @@ class PalabraViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+class RecursoVisualPagination(PageNumberPagination):
+    page_size = 24
+    page_size_query_param = "page_size"
+    max_page_size = 60
+
+
 class RecursoVisualViewSet(viewsets.ModelViewSet):
     queryset = RecursoVisual.objects.all()
     serializer_class = RecursoVisualSerializer
     parser_classes = (JSONParser, MultiPartParser, FormParser)
+    pagination_class = RecursoVisualPagination
+    pagination_class = RecursoVisualPagination
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -132,6 +157,228 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(subido_por=self.request.user)
+
+    @action(detail=False, methods=("post",), url_path="firmar-subida")
+    def firmar_subida(self, request):
+        nombre = str(request.data.get("nombre", "")).strip()
+        categoria = str(request.data.get("categoria", "")).strip()
+        extension = str(request.data.get("extension", "")).lower().lstrip(".")
+        try:
+            tamano = int(request.data.get("tamano", 0))
+        except (TypeError, ValueError):
+            tamano = 0
+
+        categorias = {valor for valor, _ in RecursoVisual.Categoria.choices}
+        if not nombre or len(nombre) > 120:
+            return Response(
+                {"nombre": "El nombre es obligatorio y no debe superar 120 caracteres."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if categoria not in categorias:
+            return Response(
+                {"categoria": "Selecciona una categoría válida."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if f".{extension}" not in FORMATOS_IMAGEN_PERMITIDOS:
+            return Response(
+                {"archivo": "El formato de imagen no está permitido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if tamano <= 0 or tamano > 10 * 1024 * 1024:
+            return Response(
+                {"archivo": "La imagen debe pesar como máximo 10 MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        parametros = {
+            "folder": "media/biblioteca",
+            "public_id": uuid.uuid4().hex,
+            "timestamp": int(time.time()),
+        }
+        firma = cloudinary.utils.api_sign_request(
+            parametros, settings.CLOUDINARY_CREDENTIALS["API_SECRET"]
+        )
+        cloud_name = settings.CLOUDINARY_CREDENTIALS["CLOUD_NAME"]
+        return Response(
+            {
+                **parametros,
+                "signature": firma,
+                "api_key": settings.CLOUDINARY_CREDENTIALS["API_KEY"],
+                "cloud_name": cloud_name,
+                "upload_url": (
+                    f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
+                ),
+            }
+        )
+
+    @action(detail=False, methods=("post",), url_path="finalizar-subida")
+    def finalizar_subida(self, request):
+        nombre = str(request.data.get("nombre", "")).strip()
+        categoria = str(request.data.get("categoria", "")).strip()
+        public_id = str(request.data.get("public_id", "")).strip()
+        categorias = {valor for valor, _ in RecursoVisual.Categoria.choices}
+        if not nombre or len(nombre) > 120 or categoria not in categorias:
+            return Response(
+                {"detail": "El nombre o la categoría no son válidos."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not public_id.startswith("media/biblioteca/"):
+            return Response(
+                {"detail": "El identificador del archivo no es válido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            archivo = cloudinary.api.resource(public_id, resource_type="image")
+        except cloudinary.exceptions.Error:
+            return Response(
+                {"detail": "Cloudinary no confirmó la imagen subida."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        formato = str(archivo.get("format", "")).lower()
+        if (
+            archivo.get("bytes", 0) > 10 * 1024 * 1024
+            or f".{formato}" not in FORMATOS_IMAGEN_PERMITIDOS
+        ):
+            cloudinary.uploader.destroy(
+                public_id, invalidate=True, resource_type="image"
+            )
+            return Response(
+                {"detail": "La imagen supera el tamaño o formato permitido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        recurso, creado = RecursoVisual.objects.get_or_create(
+            archivo=public_id,
+            defaults={
+                "nombre": nombre,
+                "archivo_url": archivo["secure_url"],
+                "extension": formato,
+                "categoria": categoria,
+                "subido_por": request.user,
+            },
+        )
+        if not creado and recurso.categoria != categoria:
+            return Response(
+                {"detail": "El archivo ya está registrado en otra categoría."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(
+            self.get_serializer(recurso).data,
+            status=status.HTTP_201_CREATED if creado else status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=("post",), url_path="firmar-subida")
+    def firmar_subida(self, request):
+        nombre = str(request.data.get("nombre", "")).strip()
+        categoria = str(request.data.get("categoria", "")).strip()
+        extension = str(request.data.get("extension", "")).lower().lstrip(".")
+        try:
+            tamano = int(request.data.get("tamano", 0))
+        except (TypeError, ValueError):
+            tamano = 0
+
+        categorias = {valor for valor, _ in RecursoVisual.Categoria.choices}
+        if not nombre or len(nombre) > 120:
+            return Response(
+                {"nombre": "El nombre es obligatorio y no debe superar 120 caracteres."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if categoria not in categorias:
+            return Response(
+                {"categoria": "Selecciona una categoría válida."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if f".{extension}" not in FORMATOS_IMAGEN_PERMITIDOS:
+            return Response(
+                {"archivo": "El formato de imagen no está permitido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if tamano <= 0 or tamano > TAMANO_MAXIMO_RECURSO:
+            return Response(
+                {"archivo": "La imagen debe pesar como máximo 10 MB."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        parametros = {
+            "folder": "media/biblioteca",
+            "public_id": uuid.uuid4().hex,
+            "timestamp": int(time.time()),
+        }
+        firma = cloudinary.utils.api_sign_request(
+            parametros, settings.CLOUDINARY_CREDENTIALS["API_SECRET"]
+        )
+        cloud_name = settings.CLOUDINARY_CREDENTIALS["CLOUD_NAME"]
+        return Response(
+            {
+                **parametros,
+                "signature": firma,
+                "api_key": settings.CLOUDINARY_CREDENTIALS["API_KEY"],
+                "cloud_name": cloud_name,
+                "upload_url": (
+                    f"https://api.cloudinary.com/v1_1/{cloud_name}/image/upload"
+                ),
+            }
+        )
+
+    @action(detail=False, methods=("post",), url_path="finalizar-subida")
+    def finalizar_subida(self, request):
+        nombre = str(request.data.get("nombre", "")).strip()
+        categoria = str(request.data.get("categoria", "")).strip()
+        public_id = str(request.data.get("public_id", "")).strip()
+        categorias = {valor for valor, _ in RecursoVisual.Categoria.choices}
+        if not nombre or len(nombre) > 120 or categoria not in categorias:
+            return Response(
+                {"detail": "El nombre o la categoría no son válidos."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if not public_id.startswith("media/biblioteca/"):
+            return Response(
+                {"detail": "El identificador del archivo no es válido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            archivo = cloudinary.api.resource(public_id, resource_type="image")
+        except cloudinary.exceptions.Error:
+            return Response(
+                {"detail": "Cloudinary no confirmó la imagen subida."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        formato = str(archivo.get("format", "")).lower()
+        if (
+            archivo.get("bytes", 0) > TAMANO_MAXIMO_RECURSO
+            or f".{formato}" not in FORMATOS_IMAGEN_PERMITIDOS
+        ):
+            cloudinary.uploader.destroy(
+                public_id, invalidate=True, resource_type="image"
+            )
+            return Response(
+                {"detail": "La imagen supera el tamaño o formato permitido."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        recurso, creado = RecursoVisual.objects.get_or_create(
+            archivo=public_id,
+            defaults={
+                "nombre": nombre,
+                "archivo_url": archivo["secure_url"],
+                "extension": formato,
+                "categoria": categoria,
+                "subido_por": request.user,
+            },
+        )
+        if not creado and recurso.categoria != categoria:
+            return Response(
+                {"detail": "El archivo ya está registrado en otra categoría."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(
+            self.get_serializer(recurso).data,
+            status=status.HTTP_201_CREATED if creado else status.HTTP_200_OK,
+        )
 
     def destroy(self, request, *args, **kwargs):
         recurso = self.get_object()

@@ -3,6 +3,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from apps.cursos.models import Curso, ProgresoUsuario
+from apps.cursos.media_utils import url_archivo
 from apps.usuarios.models import PerfilUsuario
 
 from .models import EvaluacionCamara, IntentoCamara
@@ -163,4 +164,4 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
         )
         if not recurso or not recurso.archivo:
             return None
-        return {"nombre": "Curso 100%", "imagen": f"/{recurso.archivo.url.lstrip('/')}"}
+        return {"nombre": "Curso 100%", "imagen": url_archivo(recurso.archivo)}

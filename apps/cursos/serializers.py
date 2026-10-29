@@ -26,6 +26,7 @@ from .models import (
     ProgresoUsuario,
     RecursoVisual,
 )
+from .media_utils import extension_archivo, url_archivo
 
 
 # ==========================================================
@@ -65,7 +66,7 @@ class CursoSerializer(serializers.ModelSerializer):
         return {
             "id": recurso.id,
             "nombre": recurso.nombre,
-            "imagen": f"/{recurso.archivo.url.lstrip('/')}",
+            "imagen": url_archivo(recurso.archivo),
         }
 
 
@@ -123,7 +124,7 @@ class ProgresoSerializer(serializers.ModelSerializer):
     def get_curso_insignia(self, obj):
         recurso_100 = obj.curso.insignia_100
         if obj.insignia_100_ganada and recurso_100 and recurso_100.archivo:
-            return f"/{recurso_100.archivo.url.lstrip('/')}"
+            return url_archivo(recurso_100.archivo)
         insignia = getattr(obj.curso, "insignia", "") or ""
         return f"/{insignia.lstrip('/')}" if insignia else ""
 
@@ -173,7 +174,7 @@ class IntentoSerializer(serializers.ModelSerializer):
 class RecursoVisualSerializer(serializers.ModelSerializer):
     archivo = serializers.ImageField(write_only=True, required=False)
     archivo_url = serializers.SerializerMethodField()
-    extension = serializers.SerializerMethodField()
+    extension = serializers.CharField(read_only=True)
 
     class Meta:
         model = RecursoVisual
@@ -212,10 +213,32 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
         return attrs
 
     def get_archivo_url(self, obj):
-        return f"/{obj.archivo.url.lstrip('/')}"
+        return obj.archivo_url or url_archivo(obj.archivo)
 
     def get_extension(self, obj):
-        return Path(obj.archivo.name).suffix.lower().lstrip(".")
+        return extension_archivo(obj.archivo)
+
+    def create(self, validated_data):
+        extension = Path(validated_data["archivo"].name).suffix.lower().lstrip(".")
+        recurso = super().create(validated_data)
+        recurso.archivo_url = url_archivo(recurso.archivo)
+        recurso.extension = extension
+        recurso.save(update_fields=("archivo_url", "extension"))
+        return recurso
+
+    def update(self, instance, validated_data):
+        reemplaza_archivo = "archivo" in validated_data
+        extension = (
+            Path(validated_data["archivo"].name).suffix.lower().lstrip(".")
+            if reemplaza_archivo
+            else instance.extension
+        )
+        recurso = super().update(instance, validated_data)
+        if reemplaza_archivo:
+            recurso.archivo_url = url_archivo(recurso.archivo)
+            recurso.extension = extension
+            recurso.save(update_fields=("archivo_url", "extension"))
+        return recurso
 
 
 class CursoPanelSerializer(serializers.ModelSerializer):
@@ -257,7 +280,7 @@ class CursoPanelSerializer(serializers.ModelSerializer):
         recurso = obj.insignia_100
         if not recurso or not recurso.archivo:
             return ""
-        return f"/{recurso.archivo.url.lstrip('/')}"
+        return url_archivo(recurso.archivo)
 
     def get_insignia_100_nombre(self, obj):
         return obj.insignia_100.nombre if obj.insignia_100_id else ""

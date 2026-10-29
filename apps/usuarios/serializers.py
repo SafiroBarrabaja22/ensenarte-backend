@@ -49,8 +49,10 @@ class PerfilSerializer(serializers.ModelSerializer):
     def get_foto_perfil_url(self, obj):
         if not obj.foto_perfil:
             return None
-        request = self.context.get("request")
         url = obj.foto_perfil.url
+        if url.startswith(("http://", "https://")):
+            return url
+        request = self.context.get("request")
         return request.build_absolute_uri(url) if request else url
 
     def get_es_creador(self, obj):
@@ -124,7 +126,7 @@ class ActualizarPerfilSerializer(serializers.Serializer):
 
     nombre = serializers.CharField(max_length=150, required=False)
     correo = serializers.EmailField(required=False)
-    avatar = serializers.CharField(max_length=100, required=False)
+    avatar = serializers.CharField(max_length=500, required=False)
     foto_perfil = serializers.ImageField(required=False, allow_null=True)
 
     def validate_nombre(self, value):
@@ -142,6 +144,11 @@ class ActualizarPerfilSerializer(serializers.Serializer):
     def validate_avatar(self, value):
         if value in AVATARES_ANTERIORES:
             return value
+        if RecursoVisual.objects.filter(
+            archivo_url=value,
+            categoria=RecursoVisual.Categoria.AVATAR,
+        ).exists():
+            return value
         prefijo = "/media/"
         if value.startswith(prefijo):
             ruta = value[len(prefijo):]
@@ -153,6 +160,7 @@ class ActualizarPerfilSerializer(serializers.Serializer):
         raise serializers.ValidationError(
             "Selecciona un avatar disponible en la biblioteca."
         )
+    avatar = serializers.CharField(max_length=500, required=False)
 
     def update(self, instance, validated_data):
         user = instance.user

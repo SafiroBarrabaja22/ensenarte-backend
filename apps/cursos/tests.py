@@ -14,6 +14,16 @@ from apps.evaluacion_camara.models import EvaluacionCamara
 
 
 class RecursoVisualSerializerTests(SimpleTestCase):
+    def test_expone_extension_guardada_aunque_cloudinary_omita_el_sufijo(self):
+        recurso = RecursoVisual(
+            nombre="Letra A",
+            archivo="media/biblioteca/recurso-sin-sufijo",
+            archivo_url="https://res.cloudinary.com/demo/image/upload/recurso-sin-sufijo",
+            extension="gif",
+        )
+
+        self.assertEqual(RecursoVisualSerializer(recurso).data["extension"], "gif")
+
     def test_permite_imagenes_jfif(self):
         buffer = io.BytesIO()
         Image.new("RGB", (10, 10), color="blue").save(buffer, format="JPEG")

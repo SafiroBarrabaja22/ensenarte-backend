@@ -12,6 +12,7 @@ from apps.usuarios.models import PerfilUsuario
 
 from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta, RecursoVisual
 from .permissions import EsCreadorDeCursos, EsInterprete, EsProfesor
+from .media_utils import extension_archivo, url_archivo
 from .serializers import (
     CursoPanelSerializer,
     OpcionPanelSerializer,
@@ -120,7 +121,7 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         if busqueda:
             queryset = queryset.filter(nombre__icontains=busqueda)
         if extension:
-            queryset = queryset.filter(archivo__iendswith=f".{extension}")
+            queryset = queryset.filter(extension=extension)
         return queryset
 
     def get_permissions(self):
@@ -134,20 +135,29 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
 
     def destroy(self, request, *args, **kwargs):
         recurso = self.get_object()
-        ruta = f"/{recurso.archivo.url.lstrip('/')}"
+        ruta = url_archivo(recurso.archivo)
+        nombre_archivo = (recurso.archivo.name or "").lstrip("/")
+        rutas = {
+            ruta,
+            recurso.archivo_url,
+            nombre_archivo,
+            f"/{nombre_archivo}",
+            f"/media/{nombre_archivo}",
+            f"media/{nombre_archivo}",
+        }
         esta_en_uso = (
             Curso.objects.filter(
-                Q(portada_curso=ruta)
-                | Q(imagen_diccionario=ruta)
-                | Q(imagen_evaluacion=ruta)
-                | Q(insignia=ruta)
+                Q(portada_curso__in=rutas)
+                | Q(imagen_diccionario__in=rutas)
+                | Q(imagen_evaluacion__in=rutas)
+                | Q(insignia__in=rutas)
             ).exists()
             or Curso.objects.filter(insignia_100=recurso).exists()
             or PalabraDiccionario.objects.filter(
-                Q(imagen_frontal=ruta) | Q(video_gif=ruta)
+                Q(imagen_frontal__in=rutas) | Q(video_gif__in=rutas)
             ).exists()
-            or Pregunta.objects.filter(video=ruta).exists()
-            or PerfilUsuario.objects.filter(avatar=ruta).exists()
+            or Pregunta.objects.filter(video__in=rutas).exists()
+            or PerfilUsuario.objects.filter(avatar__in=rutas).exists()
         )
         if esta_en_uso:
             return Response(

@@ -5,6 +5,8 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
+from .media_storage import RecursoVisualStorage
+
 
 def ruta_recurso_visual(instance, filename):
     extension = Path(filename).suffix.lower()
@@ -19,7 +21,12 @@ class RecursoVisual(models.Model):
         CURSO_100 = "curso_100", "Curso 100%"
 
     nombre = models.CharField(max_length=120)
-    archivo = models.ImageField(upload_to=ruta_recurso_visual)
+    archivo = models.ImageField(
+        upload_to=ruta_recurso_visual,
+        storage=RecursoVisualStorage(),
+    )
+    archivo_url = models.URLField(blank=True, default="")
+    extension = models.CharField(max_length=10, blank=True, default="")
     categoria = models.CharField(
         max_length=12,
         choices=Categoria.choices,

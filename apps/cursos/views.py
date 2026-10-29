@@ -22,6 +22,7 @@ from .serializers import (
     PalabraDiccionarioSerializer,
     ProgresoSerializer,
 )
+from .media_utils import url_archivo
 
 
 # ==========================================================
@@ -253,7 +254,7 @@ def _resultado(intento, insignia_100_nueva=False):
         usuario=intento.usuario, curso=intento.curso
     ).select_related("curso__insignia_100").first()
     recurso = progreso.curso.insignia_100 if progreso and progreso.insignia_100_ganada else None
-    imagen = f"/{recurso.archivo.url.lstrip('/')}" if recurso and recurso.archivo else ""
+    imagen = url_archivo(recurso.archivo) if recurso and recurso.archivo else ""
     falladas = set(intento.falladas or [])
     preguntas = Pregunta.objects.in_bulk(intento.orden or [])
     detalle_preguntas = [

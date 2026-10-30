@@ -105,6 +105,35 @@ La API queda en `http://127.0.0.1:8000/api/` y el admin de Django en
 
 ---
 
+## Compartir el contenido con el equipo
+
+Los cursos, preguntas, diccionario y la biblioteca visual se comparten por el
+repositorio: los datos en `apps/cursos/fixtures/contenido.json` y los archivos
+en `media/biblioteca/` y `media/contenido/`. Usuarios, progreso e intentos no
+se comparten.
+
+**Para dejar tu base igual a la del repositorio** (después de `git pull`):
+
+```bash
+python manage.py migrate
+python manage.py cargar_contenido
+```
+
+Reemplaza el contenido local (y borra el progreso de evaluaciones, que depende
+de él); los usuarios se conservan.
+
+**Para publicar tus cambios de contenido** al resto del equipo:
+
+```bash
+python manage.py exportar_contenido
+git add apps/cursos/fixtures/contenido.json media/biblioteca media/contenido
+git commit -m "Actualiza contenido"
+git push
+```
+
+Conviene que una sola persona edite el contenido a la vez: si dos exportan
+cambios distintos, el último `contenido.json` reemplaza al anterior.
+
 ## Variables de entorno
 
 | Variable | Descripción | Ejemplo |

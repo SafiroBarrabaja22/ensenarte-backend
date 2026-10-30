@@ -1,0 +1,2529 @@
+[
+  {
+    "model": "cursos.recursovisual",
+    "pk": 6,
+    "fields": {
+      "nombre": "dog",
+      "archivo": "biblioteca/58d23c0fc10e4708998ba46f6b6cc5d9.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-09-30T12:56:27.971Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 13,
+    "fields": {
+      "nombre": "Buho",
+      "archivo": "biblioteca/34c63eeb76a4431497a2f5019bbce592.png",
+      "categoria": "avatar",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-05T19:17:39.695Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 14,
+    "fields": {
+      "nombre": "gato",
+      "archivo": "biblioteca/cf23dd1e67f14101b2494012015a68f9.png",
+      "categoria": "avatar",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-05T19:18:03.482Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 15,
+    "fields": {
+      "nombre": "mano",
+      "archivo": "biblioteca/8388fdeaf9cc42738f1ddbf0ed871abc.png",
+      "categoria": "avatar",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-05T19:18:10.929Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 16,
+    "fields": {
+      "nombre": "mariposa",
+      "archivo": "biblioteca/b7db934d1a3a443e86a9133c9a774906.png",
+      "categoria": "avatar",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-05T19:18:19.292Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 17,
+    "fields": {
+      "nombre": "perro",
+      "archivo": "biblioteca/1956b257d5a2482eb18103ab3d1b9265.png",
+      "categoria": "avatar",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-05T19:18:25.863Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 18,
+    "fields": {
+      "nombre": "Completado",
+      "archivo": "biblioteca/8b81f7dd92bc410c81b8b41a2a6d730d.png",
+      "categoria": "insignia",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-05T19:20:17.790Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 19,
+    "fields": {
+      "nombre": "starry",
+      "archivo": "biblioteca/73853965c6a04e8db30cdc8576ea8ffe.jpg",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-06T16:44:09.676Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 23,
+    "fields": {
+      "nombre": "100%",
+      "archivo": "biblioteca/3e9ca497bb85493bb4c07357024e2038.png",
+      "categoria": "curso_100",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-19T18:48:55.725Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 24,
+    "fields": {
+      "nombre": "Abecedario",
+      "archivo": "biblioteca/f2af9e23b9a84b01a4076dac3f54fdf8.jpg",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T17:44:44.996Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 25,
+    "fields": {
+      "nombre": "Pronombres",
+      "archivo": "biblioteca/a91efc67b23540a49b0a44102e6f4338.jpg",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T18:55:26.297Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 26,
+    "fields": {
+      "nombre": "Ñ",
+      "archivo": "biblioteca/c1959948817641c1a62bc88475c71f7c.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:41.861Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 27,
+    "fields": {
+      "nombre": "G",
+      "archivo": "biblioteca/be9781e3c9444d3a86428c02c1670f98.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:41.941Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 28,
+    "fields": {
+      "nombre": "H",
+      "archivo": "biblioteca/12dc9a0677ff4a9589b14ce34896b78b.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.047Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 29,
+    "fields": {
+      "nombre": "A",
+      "archivo": "biblioteca/699bfc22a8ae449d8ff898882d43ecbc.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.152Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 30,
+    "fields": {
+      "nombre": "B",
+      "archivo": "biblioteca/e97f0054279544ba92d921f63e235b60.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.284Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 31,
+    "fields": {
+      "nombre": "C",
+      "archivo": "biblioteca/f0ec89cc9a32443bbf5fe6d332a15666.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.394Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 32,
+    "fields": {
+      "nombre": "E",
+      "archivo": "biblioteca/91209e4b152044c59eaefc9f413bd9b7.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.506Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 33,
+    "fields": {
+      "nombre": "F",
+      "archivo": "biblioteca/25c26642bba24388b76224eef59c81cb.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.673Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 34,
+    "fields": {
+      "nombre": "I",
+      "archivo": "biblioteca/2c35a618e4a94b299bf378f1ae120914.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.749Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 35,
+    "fields": {
+      "nombre": "J",
+      "archivo": "biblioteca/5146ee2688e542a7963c3708ac80aa86.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.812Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 36,
+    "fields": {
+      "nombre": "K",
+      "archivo": "biblioteca/38027772eec646ffa1c04c0cdcf5f6a9.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.880Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 37,
+    "fields": {
+      "nombre": "M",
+      "archivo": "biblioteca/590e19db28804d34919fc107024f7713.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:42.950Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 38,
+    "fields": {
+      "nombre": "N",
+      "archivo": "biblioteca/c2fac97169cc46f89f35ca8559f14d6b.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.027Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 39,
+    "fields": {
+      "nombre": "P",
+      "archivo": "biblioteca/044e57703835453e8a31514587e0f2df.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.096Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 40,
+    "fields": {
+      "nombre": "R",
+      "archivo": "biblioteca/048f9f3ce5554c68b1cbe3b005805f92.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.167Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 41,
+    "fields": {
+      "nombre": "T",
+      "archivo": "biblioteca/7b0b908addc74232a804d7563dc6a9c3.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.255Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 42,
+    "fields": {
+      "nombre": "U",
+      "archivo": "biblioteca/be5ca13754a144a9bd6db63b715bdd17.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.339Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 43,
+    "fields": {
+      "nombre": "V",
+      "archivo": "biblioteca/446c8597d24a4bfe8d47d21a913ee914.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.412Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 44,
+    "fields": {
+      "nombre": "W",
+      "archivo": "biblioteca/a975e5eaeaea42a997a6dc51b54cad56.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.480Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 45,
+    "fields": {
+      "nombre": "X",
+      "archivo": "biblioteca/0bbf3d908b124b6db07e301cf127f456.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.528Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 46,
+    "fields": {
+      "nombre": "Y",
+      "archivo": "biblioteca/2800282c37b3492592c703901a6ad293.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.591Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 47,
+    "fields": {
+      "nombre": "D",
+      "archivo": "biblioteca/7b113db1cdf34352970196043f33182f.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.707Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 48,
+    "fields": {
+      "nombre": "L",
+      "archivo": "biblioteca/7a34dbd75360490091e7cd6e7a1f3123.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.770Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 49,
+    "fields": {
+      "nombre": "O",
+      "archivo": "biblioteca/64a247e4bd7f461b9ae85c84fbc00d5f.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.818Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 50,
+    "fields": {
+      "nombre": "Q",
+      "archivo": "biblioteca/ee13befb62ae4025959f8357cdae0c4f.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.890Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 51,
+    "fields": {
+      "nombre": "S",
+      "archivo": "biblioteca/70bfb2e05e2744eab946a762b49b8354.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.938Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 52,
+    "fields": {
+      "nombre": "Z",
+      "archivo": "biblioteca/5e8c5867815d4da2b42900d78654e56e.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T21:44:43.990Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 55,
+    "fields": {
+      "nombre": "letra A",
+      "archivo": "biblioteca/442751d596aa48cfa71e71e2efd46d01.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:03:02.540Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 56,
+    "fields": {
+      "nombre": "letra B",
+      "archivo": "biblioteca/ed1b63567c0b47d4a97f30d0647819c5.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.600Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 57,
+    "fields": {
+      "nombre": "letra C",
+      "archivo": "biblioteca/5c940a748b20406cbba758dc41930c42.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.633Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 58,
+    "fields": {
+      "nombre": "letra D",
+      "archivo": "biblioteca/2494aede3c8a499ca29bc5c564cdd365.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.661Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 59,
+    "fields": {
+      "nombre": "letra E",
+      "archivo": "biblioteca/3682c7de27314dfeb92dfed099523e49.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.706Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 60,
+    "fields": {
+      "nombre": "letra enie",
+      "archivo": "biblioteca/19d1c9d463854629b25c5fb861d580de.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.737Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 61,
+    "fields": {
+      "nombre": "letra F",
+      "archivo": "biblioteca/1bd451356b45476a98a6a5335dc3dd4e.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.768Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 62,
+    "fields": {
+      "nombre": "letra G",
+      "archivo": "biblioteca/44a079cab20740c795cf197b92510652.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.802Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 63,
+    "fields": {
+      "nombre": "letra H",
+      "archivo": "biblioteca/d38e411b82764fea8d813c97a885af19.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.834Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 64,
+    "fields": {
+      "nombre": "letra I",
+      "archivo": "biblioteca/e1f6959d052d486595bbbd03a9a1d0e8.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.865Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 65,
+    "fields": {
+      "nombre": "letra J",
+      "archivo": "biblioteca/44a379771886466c93ef8143a8ea6548.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.896Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 66,
+    "fields": {
+      "nombre": "letra K",
+      "archivo": "biblioteca/8686c695e06d42c28fe7aba0e2e8a169.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.925Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 67,
+    "fields": {
+      "nombre": "letra L",
+      "archivo": "biblioteca/23e9d795ae614199a002f9d2cdae0dc2.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.959Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 68,
+    "fields": {
+      "nombre": "letra M",
+      "archivo": "biblioteca/367b4cbd6b854e47b45fbaebc134323d.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:00.989Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 69,
+    "fields": {
+      "nombre": "letra N",
+      "archivo": "biblioteca/0f651517f6084ab4bb7db78a068adf01.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.022Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 70,
+    "fields": {
+      "nombre": "letra O",
+      "archivo": "biblioteca/de2b027068cc479e8b9869dc66993fd7.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.054Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 71,
+    "fields": {
+      "nombre": "letra P",
+      "archivo": "biblioteca/c4bdaebb5e14431a8292c67dd3af3926.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.087Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 72,
+    "fields": {
+      "nombre": "letra Q",
+      "archivo": "biblioteca/15b9c451dd794acea640281f114d4247.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.121Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 73,
+    "fields": {
+      "nombre": "letra R",
+      "archivo": "biblioteca/514b62696aa34f6ab35246aed096aa6f.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.153Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 74,
+    "fields": {
+      "nombre": "letra S",
+      "archivo": "biblioteca/0c60567c7250497dab76625b6064d78c.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.193Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 75,
+    "fields": {
+      "nombre": "letra T",
+      "archivo": "biblioteca/08aebb4e5dd04c52a461c78525a91225.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.227Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 76,
+    "fields": {
+      "nombre": "letra U",
+      "archivo": "biblioteca/2403051aea404bdc9392ff4e6fd8147b.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.262Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 77,
+    "fields": {
+      "nombre": "letra V",
+      "archivo": "biblioteca/0fe2c604e35047a5b346963716bdc879.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.292Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 78,
+    "fields": {
+      "nombre": "letra W",
+      "archivo": "biblioteca/abec703e5f35475ea53190bf0486bde6.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.324Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 79,
+    "fields": {
+      "nombre": "letra X",
+      "archivo": "biblioteca/48c1258f704f44d0aaba6eadcd52c04c.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.355Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 80,
+    "fields": {
+      "nombre": "letra Y",
+      "archivo": "biblioteca/70e4becc519c460fb6bcf7beafbf2f82.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.386Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 81,
+    "fields": {
+      "nombre": "letra Z",
+      "archivo": "biblioteca/ae1db5848ad84cc287e97bdb9e1698b8.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:04:01.414Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 82,
+    "fields": {
+      "nombre": "letra Ñ",
+      "archivo": "biblioteca/f4a0a70456b54408929592ef3c516b19.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T22:09:02.123Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 83,
+    "fields": {
+      "nombre": "icono pronombres",
+      "archivo": "biblioteca/dac7977d15574543973c4a4d4b480b19.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T23:18:53.299Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 84,
+    "fields": {
+      "nombre": "icono abecedario",
+      "archivo": "biblioteca/8986d2fc941540d1a8ee3def9fe2d416.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-29T23:18:53.345Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 85,
+    "fields": {
+      "nombre": "Nosotros",
+      "archivo": "biblioteca/4f493b656a8146b49bcaf431363c833b.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.133Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 86,
+    "fields": {
+      "nombre": "Usted",
+      "archivo": "biblioteca/65ddec583e7f4b0ea7bf0452e29446a4.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.190Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 87,
+    "fields": {
+      "nombre": "Ella",
+      "archivo": "biblioteca/37ca67a4acf043168734683823b9f9bf.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.272Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 88,
+    "fields": {
+      "nombre": "Yo",
+      "archivo": "biblioteca/48ea9f194947412fab3a715eaaeb568e.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.335Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 89,
+    "fields": {
+      "nombre": "Tú",
+      "archivo": "biblioteca/c9c9a0272d564f9d874487d34e6189a6.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.398Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 90,
+    "fields": {
+      "nombre": "El",
+      "archivo": "biblioteca/9590064dd0c34afb96c38dfb1491cf52.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.456Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 91,
+    "fields": {
+      "nombre": "Ustedes",
+      "archivo": "biblioteca/93079f9c9d614c519067ace0d94b983c.gif",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:35:18.524Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 121,
+    "fields": {
+      "nombre": "pronombre ustedes",
+      "archivo": "biblioteca/5e88f57e2e3a4d8a8c97705c2d0507c2.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.496Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 122,
+    "fields": {
+      "nombre": "pronombre yo",
+      "archivo": "biblioteca/430c7466d7f04f51aa435b4f756aee5f.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.547Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 123,
+    "fields": {
+      "nombre": "pronombre el",
+      "archivo": "biblioteca/e0ec90747dc6485f9f4ff4db3f463d1c.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.590Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 124,
+    "fields": {
+      "nombre": "pronombre ella",
+      "archivo": "biblioteca/f52bc460367643c3a4cb929427af5cad.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.628Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 125,
+    "fields": {
+      "nombre": "pronombre nosotros",
+      "archivo": "biblioteca/6b214bd53c504595a5057ad1187f681b.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.672Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 126,
+    "fields": {
+      "nombre": "pronombre tu",
+      "archivo": "biblioteca/a9e050d535f3451f9db6ea8a0f686364.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.711Z"
+    }
+  },
+  {
+    "model": "cursos.recursovisual",
+    "pk": 127,
+    "fields": {
+      "nombre": "pronombre usted",
+      "archivo": "biblioteca/bf2f77725f6941dea4fade8323cf5d7d.png",
+      "categoria": "recurso",
+      "subido_por": null,
+      "fecha_creacion": "2026-10-30T00:55:28.755Z"
+    }
+  },
+  {
+    "model": "cursos.curso",
+    "pk": 1,
+    "fields": {
+      "nombre": "abecedario",
+      "titulo": "Abecedario",
+      "portada_curso": "/media/biblioteca/f2af9e23b9a84b01a4076dac3f54fdf8.jpg",
+      "icono_curso": "/media/biblioteca/8986d2fc941540d1a8ee3def9fe2d416.png",
+      "insignia": "/media/biblioteca/8b81f7dd92bc410c81b8b41a2a6d730d.png",
+      "insignia_100": 23,
+      "descripcion": "Curso básico del abecedario en lengua de señas colombiana.",
+      "preguntas_por_evaluacion": 10,
+      "creado_por": null,
+      "fecha_creacion": "2026-09-15T16:39:26.101Z",
+      "fecha_modificacion": "2026-10-29T23:19:22.535Z",
+      "activo": true
+    }
+  },
+  {
+    "model": "cursos.curso",
+    "pk": 9,
+    "fields": {
+      "nombre": "pronombres",
+      "titulo": "Pronombres",
+      "portada_curso": "/media/biblioteca/a91efc67b23540a49b0a44102e6f4338.jpg",
+      "icono_curso": "/media/biblioteca/dac7977d15574543973c4a4d4b480b19.png",
+      "insignia": "/media/biblioteca/8b81f7dd92bc410c81b8b41a2a6d730d.png",
+      "insignia_100": 23,
+      "descripcion": "",
+      "preguntas_por_evaluacion": null,
+      "creado_por": null,
+      "fecha_creacion": "2026-10-29T23:07:33.806Z",
+      "fecha_modificacion": "2026-10-29T23:20:30.367Z",
+      "activo": true
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 28,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/699bfc22a8ae449d8ff898882d43ecbc.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 29,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/e97f0054279544ba92d921f63e235b60.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 30,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/f0ec89cc9a32443bbf5fe6d332a15666.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 31,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/7b113db1cdf34352970196043f33182f.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 32,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/91209e4b152044c59eaefc9f413bd9b7.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 33,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/25c26642bba24388b76224eef59c81cb.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 34,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/be9781e3c9444d3a86428c02c1670f98.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 35,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/12dc9a0677ff4a9589b14ce34896b78b.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 36,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/2c35a618e4a94b299bf378f1ae120914.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 37,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/5146ee2688e542a7963c3708ac80aa86.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 38,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/38027772eec646ffa1c04c0cdcf5f6a9.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 39,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/7a34dbd75360490091e7cd6e7a1f3123.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 40,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/590e19db28804d34919fc107024f7713.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 41,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/c2fac97169cc46f89f35ca8559f14d6b.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 42,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/c1959948817641c1a62bc88475c71f7c.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 43,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/64a247e4bd7f461b9ae85c84fbc00d5f.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 44,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/044e57703835453e8a31514587e0f2df.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 45,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/ee13befb62ae4025959f8357cdae0c4f.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 46,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/048f9f3ce5554c68b1cbe3b005805f92.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 47,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/70bfb2e05e2744eab946a762b49b8354.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 48,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/7b0b908addc74232a804d7563dc6a9c3.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 49,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/be5ca13754a144a9bd6db63b715bdd17.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 50,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/446c8597d24a4bfe8d47d21a913ee914.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 51,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/a975e5eaeaea42a997a6dc51b54cad56.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 52,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/0bbf3d908b124b6db07e301cf127f456.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 53,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/2800282c37b3492592c703901a6ad293.gif"
+    }
+  },
+  {
+    "model": "cursos.pregunta",
+    "pk": 54,
+    "fields": {
+      "curso": 1,
+      "texto": "¿Cuál letra es esta?",
+      "video": "/media/biblioteca/5e8c5867815d4da2b42900d78654e56e.gif"
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 103,
+    "fields": {
+      "pregunta": 28,
+      "texto": "B",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 104,
+    "fields": {
+      "pregunta": 28,
+      "texto": "C",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 105,
+    "fields": {
+      "pregunta": 28,
+      "texto": "A",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 106,
+    "fields": {
+      "pregunta": 28,
+      "texto": "F",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 107,
+    "fields": {
+      "pregunta": 29,
+      "texto": "C",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 108,
+    "fields": {
+      "pregunta": 29,
+      "texto": "D",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 109,
+    "fields": {
+      "pregunta": 29,
+      "texto": "B",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 110,
+    "fields": {
+      "pregunta": 29,
+      "texto": "A",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 111,
+    "fields": {
+      "pregunta": 30,
+      "texto": "C",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 112,
+    "fields": {
+      "pregunta": 30,
+      "texto": "D",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 113,
+    "fields": {
+      "pregunta": 30,
+      "texto": "H",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 114,
+    "fields": {
+      "pregunta": 30,
+      "texto": "X",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 115,
+    "fields": {
+      "pregunta": 31,
+      "texto": "E",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 116,
+    "fields": {
+      "pregunta": 31,
+      "texto": "D",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 117,
+    "fields": {
+      "pregunta": 31,
+      "texto": "V",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 118,
+    "fields": {
+      "pregunta": 31,
+      "texto": "L",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 119,
+    "fields": {
+      "pregunta": 32,
+      "texto": "X",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 120,
+    "fields": {
+      "pregunta": 32,
+      "texto": "A",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 121,
+    "fields": {
+      "pregunta": 32,
+      "texto": "E",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 122,
+    "fields": {
+      "pregunta": 32,
+      "texto": "K",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 123,
+    "fields": {
+      "pregunta": 33,
+      "texto": "F",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 124,
+    "fields": {
+      "pregunta": 33,
+      "texto": "U",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 125,
+    "fields": {
+      "pregunta": 33,
+      "texto": "W",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 126,
+    "fields": {
+      "pregunta": 33,
+      "texto": "G",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 127,
+    "fields": {
+      "pregunta": 34,
+      "texto": "B",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 128,
+    "fields": {
+      "pregunta": 34,
+      "texto": "N",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 129,
+    "fields": {
+      "pregunta": 34,
+      "texto": "G",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 130,
+    "fields": {
+      "pregunta": 34,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 131,
+    "fields": {
+      "pregunta": 35,
+      "texto": "H",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 132,
+    "fields": {
+      "pregunta": 35,
+      "texto": "M",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 133,
+    "fields": {
+      "pregunta": 35,
+      "texto": "B",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 134,
+    "fields": {
+      "pregunta": 35,
+      "texto": "C",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 135,
+    "fields": {
+      "pregunta": 36,
+      "texto": "P",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 136,
+    "fields": {
+      "pregunta": 36,
+      "texto": "I",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 137,
+    "fields": {
+      "pregunta": 36,
+      "texto": "T",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 138,
+    "fields": {
+      "pregunta": 36,
+      "texto": "V",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 139,
+    "fields": {
+      "pregunta": 37,
+      "texto": "Q",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 140,
+    "fields": {
+      "pregunta": 37,
+      "texto": "J",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 141,
+    "fields": {
+      "pregunta": 37,
+      "texto": "V",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 142,
+    "fields": {
+      "pregunta": 37,
+      "texto": "G",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 143,
+    "fields": {
+      "pregunta": 38,
+      "texto": "L",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 144,
+    "fields": {
+      "pregunta": 38,
+      "texto": "K",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 145,
+    "fields": {
+      "pregunta": 38,
+      "texto": "Q",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 146,
+    "fields": {
+      "pregunta": 38,
+      "texto": "W",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 147,
+    "fields": {
+      "pregunta": 39,
+      "texto": "L",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 148,
+    "fields": {
+      "pregunta": 39,
+      "texto": "X",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 149,
+    "fields": {
+      "pregunta": 39,
+      "texto": "D",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 150,
+    "fields": {
+      "pregunta": 39,
+      "texto": "E",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 151,
+    "fields": {
+      "pregunta": 40,
+      "texto": "R",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 152,
+    "fields": {
+      "pregunta": 40,
+      "texto": "T",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 153,
+    "fields": {
+      "pregunta": 40,
+      "texto": "F",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 154,
+    "fields": {
+      "pregunta": 40,
+      "texto": "M",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 155,
+    "fields": {
+      "pregunta": 41,
+      "texto": "N",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 156,
+    "fields": {
+      "pregunta": 41,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 157,
+    "fields": {
+      "pregunta": 41,
+      "texto": "D",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 158,
+    "fields": {
+      "pregunta": 41,
+      "texto": "F",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 161,
+    "fields": {
+      "pregunta": 42,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 162,
+    "fields": {
+      "pregunta": 42,
+      "texto": "Ñ",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 163,
+    "fields": {
+      "pregunta": 42,
+      "texto": "M",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 164,
+    "fields": {
+      "pregunta": 42,
+      "texto": "N",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 165,
+    "fields": {
+      "pregunta": 43,
+      "texto": "A",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 166,
+    "fields": {
+      "pregunta": 43,
+      "texto": "C",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 167,
+    "fields": {
+      "pregunta": 43,
+      "texto": "O",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 168,
+    "fields": {
+      "pregunta": 43,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 169,
+    "fields": {
+      "pregunta": 44,
+      "texto": "Q",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 170,
+    "fields": {
+      "pregunta": 44,
+      "texto": "R",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 171,
+    "fields": {
+      "pregunta": 44,
+      "texto": "P",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 172,
+    "fields": {
+      "pregunta": 44,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 173,
+    "fields": {
+      "pregunta": 45,
+      "texto": "Q",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 174,
+    "fields": {
+      "pregunta": 45,
+      "texto": "X",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 175,
+    "fields": {
+      "pregunta": 45,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 176,
+    "fields": {
+      "pregunta": 45,
+      "texto": "F",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 177,
+    "fields": {
+      "pregunta": 46,
+      "texto": "G",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 178,
+    "fields": {
+      "pregunta": 46,
+      "texto": "B",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 179,
+    "fields": {
+      "pregunta": 46,
+      "texto": "R",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 180,
+    "fields": {
+      "pregunta": 46,
+      "texto": "L",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 181,
+    "fields": {
+      "pregunta": 47,
+      "texto": "P",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 182,
+    "fields": {
+      "pregunta": 47,
+      "texto": "H",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 183,
+    "fields": {
+      "pregunta": 47,
+      "texto": "S",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 184,
+    "fields": {
+      "pregunta": 47,
+      "texto": "T",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 185,
+    "fields": {
+      "pregunta": 48,
+      "texto": "T",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 186,
+    "fields": {
+      "pregunta": 48,
+      "texto": "A",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 187,
+    "fields": {
+      "pregunta": 48,
+      "texto": "Y",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 188,
+    "fields": {
+      "pregunta": 48,
+      "texto": "U",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 189,
+    "fields": {
+      "pregunta": 49,
+      "texto": "U",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 190,
+    "fields": {
+      "pregunta": 49,
+      "texto": "A",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 191,
+    "fields": {
+      "pregunta": 49,
+      "texto": "T",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 192,
+    "fields": {
+      "pregunta": 49,
+      "texto": "V",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 193,
+    "fields": {
+      "pregunta": 50,
+      "texto": "V",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 194,
+    "fields": {
+      "pregunta": 50,
+      "texto": "W",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 195,
+    "fields": {
+      "pregunta": 50,
+      "texto": "U",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 196,
+    "fields": {
+      "pregunta": 50,
+      "texto": "X",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 197,
+    "fields": {
+      "pregunta": 51,
+      "texto": "V",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 198,
+    "fields": {
+      "pregunta": 51,
+      "texto": "U",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 199,
+    "fields": {
+      "pregunta": 51,
+      "texto": "W",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 200,
+    "fields": {
+      "pregunta": 51,
+      "texto": "Y",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 201,
+    "fields": {
+      "pregunta": 52,
+      "texto": "X",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 202,
+    "fields": {
+      "pregunta": 52,
+      "texto": "F",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 203,
+    "fields": {
+      "pregunta": 52,
+      "texto": "D",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 204,
+    "fields": {
+      "pregunta": 52,
+      "texto": "G",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 205,
+    "fields": {
+      "pregunta": 53,
+      "texto": "Q",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 206,
+    "fields": {
+      "pregunta": 53,
+      "texto": "Y",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 207,
+    "fields": {
+      "pregunta": 53,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 208,
+    "fields": {
+      "pregunta": 53,
+      "texto": "X",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 209,
+    "fields": {
+      "pregunta": 54,
+      "texto": "S",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 210,
+    "fields": {
+      "pregunta": 54,
+      "texto": "L",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 211,
+    "fields": {
+      "pregunta": 54,
+      "texto": "Z",
+      "es_correcta": true
+    }
+  },
+  {
+    "model": "cursos.opcionpregunta",
+    "pk": 212,
+    "fields": {
+      "pregunta": 54,
+      "texto": "M",
+      "es_correcta": false
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 1,
+    "fields": {
+      "curso": 1,
+      "titulo": "A",
+      "imagen_frontal": "/media/biblioteca/442751d596aa48cfa71e71e2efd46d01.png",
+      "video_gif": "/media/biblioteca/699bfc22a8ae449d8ff898882d43ecbc.gif",
+      "orden": 1
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 3,
+    "fields": {
+      "curso": 1,
+      "titulo": "C",
+      "imagen_frontal": "/media/biblioteca/5c940a748b20406cbba758dc41930c42.png",
+      "video_gif": "/media/biblioteca/f0ec89cc9a32443bbf5fe6d332a15666.gif",
+      "orden": 3
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 4,
+    "fields": {
+      "curso": 1,
+      "titulo": "D",
+      "imagen_frontal": "/media/biblioteca/2494aede3c8a499ca29bc5c564cdd365.png",
+      "video_gif": "/media/biblioteca/7b113db1cdf34352970196043f33182f.gif",
+      "orden": 4
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 5,
+    "fields": {
+      "curso": 1,
+      "titulo": "E",
+      "imagen_frontal": "/media/biblioteca/3682c7de27314dfeb92dfed099523e49.png",
+      "video_gif": "/media/biblioteca/91209e4b152044c59eaefc9f413bd9b7.gif",
+      "orden": 5
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 6,
+    "fields": {
+      "curso": 1,
+      "titulo": "F",
+      "imagen_frontal": "/media/biblioteca/1bd451356b45476a98a6a5335dc3dd4e.png",
+      "video_gif": "/media/biblioteca/25c26642bba24388b76224eef59c81cb.gif",
+      "orden": 6
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 7,
+    "fields": {
+      "curso": 1,
+      "titulo": "G",
+      "imagen_frontal": "/media/biblioteca/44a079cab20740c795cf197b92510652.png",
+      "video_gif": "/media/biblioteca/be9781e3c9444d3a86428c02c1670f98.gif",
+      "orden": 7
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 8,
+    "fields": {
+      "curso": 1,
+      "titulo": "H",
+      "imagen_frontal": "/media/biblioteca/d38e411b82764fea8d813c97a885af19.png",
+      "video_gif": "/media/biblioteca/12dc9a0677ff4a9589b14ce34896b78b.gif",
+      "orden": 8
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 9,
+    "fields": {
+      "curso": 1,
+      "titulo": "I",
+      "imagen_frontal": "/media/biblioteca/e1f6959d052d486595bbbd03a9a1d0e8.png",
+      "video_gif": "/media/biblioteca/2c35a618e4a94b299bf378f1ae120914.gif",
+      "orden": 9
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 10,
+    "fields": {
+      "curso": 1,
+      "titulo": "J",
+      "imagen_frontal": "/media/biblioteca/44a379771886466c93ef8143a8ea6548.png",
+      "video_gif": "/media/biblioteca/5146ee2688e542a7963c3708ac80aa86.gif",
+      "orden": 10
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 17,
+    "fields": {
+      "curso": 1,
+      "titulo": "K",
+      "imagen_frontal": "/media/biblioteca/8686c695e06d42c28fe7aba0e2e8a169.png",
+      "video_gif": "/media/biblioteca/38027772eec646ffa1c04c0cdcf5f6a9.gif",
+      "orden": 11
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 18,
+    "fields": {
+      "curso": 1,
+      "titulo": "L",
+      "imagen_frontal": "/media/biblioteca/23e9d795ae614199a002f9d2cdae0dc2.png",
+      "video_gif": "/media/biblioteca/7a34dbd75360490091e7cd6e7a1f3123.gif",
+      "orden": 12
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 19,
+    "fields": {
+      "curso": 1,
+      "titulo": "B",
+      "imagen_frontal": "/media/biblioteca/ed1b63567c0b47d4a97f30d0647819c5.png",
+      "video_gif": "/media/biblioteca/e97f0054279544ba92d921f63e235b60.gif",
+      "orden": 2
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 20,
+    "fields": {
+      "curso": 1,
+      "titulo": "M",
+      "imagen_frontal": "/media/biblioteca/367b4cbd6b854e47b45fbaebc134323d.png",
+      "video_gif": "/media/biblioteca/590e19db28804d34919fc107024f7713.gif",
+      "orden": 13
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 21,
+    "fields": {
+      "curso": 1,
+      "titulo": "N",
+      "imagen_frontal": "/media/biblioteca/0f651517f6084ab4bb7db78a068adf01.png",
+      "video_gif": "/media/biblioteca/c2fac97169cc46f89f35ca8559f14d6b.gif",
+      "orden": 14
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 22,
+    "fields": {
+      "curso": 1,
+      "titulo": "Ñ",
+      "imagen_frontal": "/media/biblioteca/f4a0a70456b54408929592ef3c516b19.png",
+      "video_gif": "/media/biblioteca/c1959948817641c1a62bc88475c71f7c.gif",
+      "orden": 15
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 23,
+    "fields": {
+      "curso": 1,
+      "titulo": "O",
+      "imagen_frontal": "/media/biblioteca/de2b027068cc479e8b9869dc66993fd7.png",
+      "video_gif": "/media/biblioteca/64a247e4bd7f461b9ae85c84fbc00d5f.gif",
+      "orden": 16
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 24,
+    "fields": {
+      "curso": 1,
+      "titulo": "P",
+      "imagen_frontal": "/media/biblioteca/c4bdaebb5e14431a8292c67dd3af3926.png",
+      "video_gif": "/media/biblioteca/044e57703835453e8a31514587e0f2df.gif",
+      "orden": 17
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 25,
+    "fields": {
+      "curso": 1,
+      "titulo": "Q",
+      "imagen_frontal": "/media/biblioteca/15b9c451dd794acea640281f114d4247.png",
+      "video_gif": "/media/biblioteca/ee13befb62ae4025959f8357cdae0c4f.gif",
+      "orden": 18
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 26,
+    "fields": {
+      "curso": 1,
+      "titulo": "R",
+      "imagen_frontal": "/media/biblioteca/514b62696aa34f6ab35246aed096aa6f.png",
+      "video_gif": "/media/biblioteca/048f9f3ce5554c68b1cbe3b005805f92.gif",
+      "orden": 19
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 27,
+    "fields": {
+      "curso": 1,
+      "titulo": "S",
+      "imagen_frontal": "/media/biblioteca/0c60567c7250497dab76625b6064d78c.png",
+      "video_gif": "/media/biblioteca/70bfb2e05e2744eab946a762b49b8354.gif",
+      "orden": 20
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 28,
+    "fields": {
+      "curso": 1,
+      "titulo": "T",
+      "imagen_frontal": "/media/biblioteca/08aebb4e5dd04c52a461c78525a91225.png",
+      "video_gif": "/media/biblioteca/7b0b908addc74232a804d7563dc6a9c3.gif",
+      "orden": 21
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 29,
+    "fields": {
+      "curso": 1,
+      "titulo": "U",
+      "imagen_frontal": "/media/biblioteca/2403051aea404bdc9392ff4e6fd8147b.png",
+      "video_gif": "/media/biblioteca/be5ca13754a144a9bd6db63b715bdd17.gif",
+      "orden": 22
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 30,
+    "fields": {
+      "curso": 1,
+      "titulo": "V",
+      "imagen_frontal": "/media/biblioteca/0fe2c604e35047a5b346963716bdc879.png",
+      "video_gif": "/media/biblioteca/446c8597d24a4bfe8d47d21a913ee914.gif",
+      "orden": 23
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 31,
+    "fields": {
+      "curso": 1,
+      "titulo": "W",
+      "imagen_frontal": "/media/biblioteca/abec703e5f35475ea53190bf0486bde6.png",
+      "video_gif": "/media/biblioteca/a975e5eaeaea42a997a6dc51b54cad56.gif",
+      "orden": 24
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 32,
+    "fields": {
+      "curso": 1,
+      "titulo": "X",
+      "imagen_frontal": "/media/biblioteca/48c1258f704f44d0aaba6eadcd52c04c.png",
+      "video_gif": "/media/biblioteca/0bbf3d908b124b6db07e301cf127f456.gif",
+      "orden": 25
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 33,
+    "fields": {
+      "curso": 1,
+      "titulo": "Y",
+      "imagen_frontal": "/media/biblioteca/70e4becc519c460fb6bcf7beafbf2f82.png",
+      "video_gif": "/media/biblioteca/2800282c37b3492592c703901a6ad293.gif",
+      "orden": 26
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 34,
+    "fields": {
+      "curso": 1,
+      "titulo": "Z",
+      "imagen_frontal": "/media/biblioteca/ae1db5848ad84cc287e97bdb9e1698b8.png",
+      "video_gif": "/media/biblioteca/5e8c5867815d4da2b42900d78654e56e.gif",
+      "orden": 27
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 35,
+    "fields": {
+      "curso": 9,
+      "titulo": "Yo",
+      "imagen_frontal": "/media/biblioteca/430c7466d7f04f51aa435b4f756aee5f.png",
+      "video_gif": "/media/biblioteca/48ea9f194947412fab3a715eaaeb568e.gif",
+      "orden": 1
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 36,
+    "fields": {
+      "curso": 9,
+      "titulo": "Tú",
+      "imagen_frontal": "/media/biblioteca/a9e050d535f3451f9db6ea8a0f686364.png",
+      "video_gif": "/media/biblioteca/c9c9a0272d564f9d874487d34e6189a6.gif",
+      "orden": 2
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 37,
+    "fields": {
+      "curso": 9,
+      "titulo": "Él",
+      "imagen_frontal": "/media/biblioteca/e0ec90747dc6485f9f4ff4db3f463d1c.png",
+      "video_gif": "/media/biblioteca/9590064dd0c34afb96c38dfb1491cf52.gif",
+      "orden": 3
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 38,
+    "fields": {
+      "curso": 9,
+      "titulo": "Ella",
+      "imagen_frontal": "/media/biblioteca/f52bc460367643c3a4cb929427af5cad.png",
+      "video_gif": "/media/biblioteca/37ca67a4acf043168734683823b9f9bf.gif",
+      "orden": 4
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 39,
+    "fields": {
+      "curso": 9,
+      "titulo": "Nosotros",
+      "imagen_frontal": "/media/biblioteca/6b214bd53c504595a5057ad1187f681b.png",
+      "video_gif": "/media/biblioteca/4f493b656a8146b49bcaf431363c833b.gif",
+      "orden": 5
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 40,
+    "fields": {
+      "curso": 9,
+      "titulo": "Usted",
+      "imagen_frontal": "/media/biblioteca/bf2f77725f6941dea4fade8323cf5d7d.png",
+      "video_gif": "/media/biblioteca/65ddec583e7f4b0ea7bf0452e29446a4.gif",
+      "orden": 6
+    }
+  },
+  {
+    "model": "cursos.palabradiccionario",
+    "pk": 41,
+    "fields": {
+      "curso": 9,
+      "titulo": "Ustedes",
+      "imagen_frontal": "/media/biblioteca/5e88f57e2e3a4d8a8c97705c2d0507c2.png",
+      "video_gif": "/media/biblioteca/93079f9c9d614c519067ace0d94b983c.gif",
+      "orden": 7
+    }
+  }
+]

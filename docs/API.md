@@ -150,8 +150,6 @@ Público. Lista los cursos activos.
     "titulo": "Abecedario",
     "descripcion": "Curso basico del abecedario en LSC.",
     "portada_curso": "portadaAbecedario.jpg",
-    "imagen_diccionario": "portadaAbecedario.jpg",
-    "imagen_evaluacion": "evaluacionInicio.jpg",
     "activo": true,
     "total_preguntas": 10,
     "total_palabras": 10
@@ -421,8 +419,6 @@ CRUD completo: `GET` (lista), `POST` (crear), `GET /<id>/`, `PATCH /<id>/`,
   "titulo": "Saludos y cortesia",
   "descripcion": "Expresiones basicas.",
   "portada_curso": "cursos.jpg",
-  "imagen_diccionario": "livres.jpg",
-  "imagen_evaluacion": "evaluacionInicio.jpg",
   "activo": true
 }
 ```

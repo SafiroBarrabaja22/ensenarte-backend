@@ -33,9 +33,7 @@ from .models import (
 # ==========================================================
 
 class CursoSerializer(serializers.ModelSerializer):
-    total_preguntas = serializers.IntegerField(
-        source="preguntas.count", read_only=True
-    )
+    total_preguntas = serializers.SerializerMethodField()
     total_palabras = serializers.IntegerField(
         source="diccionario.count", read_only=True
     )
@@ -49,14 +47,20 @@ class CursoSerializer(serializers.ModelSerializer):
             "titulo",
             "descripcion",
             "portada_curso",
-            "imagen_diccionario",
-            "imagen_evaluacion",
+            "icono_curso",
             "insignia",
             "insignia_100",
             "activo",
             "total_preguntas",
             "total_palabras",
         )
+
+    def get_total_preguntas(self, obj):
+        """Preguntas que vera el estudiante en cada intento."""
+        total = obj.preguntas.count()
+        if obj.preguntas_por_evaluacion:
+            return min(total, obj.preguntas_por_evaluacion)
+        return total
 
     def get_insignia_100(self, obj):
         recurso = obj.insignia_100
@@ -240,12 +244,12 @@ class CursoPanelSerializer(serializers.ModelSerializer):
             "titulo",
             "descripcion",
             "portada_curso",
-            "imagen_diccionario",
-            "imagen_evaluacion",
+            "icono_curso",
             "insignia",
             "insignia_100",
             "insignia_100_nombre",
             "insignia_100_url",
+            "preguntas_por_evaluacion",
             "activo",
             "creado_por",
             "fecha_creacion",
@@ -295,4 +299,5 @@ class PreguntaPanelSerializer(serializers.ModelSerializer):
 class PalabraPanelSerializer(serializers.ModelSerializer):
     class Meta:
         model = PalabraDiccionario
-        fields = ("id", "curso", "titulo", "imagen_frontal", "video_gif")
+        fields = ("id", "curso", "titulo", "imagen_frontal", "video_gif", "orden")
+        read_only_fields = ("orden",)

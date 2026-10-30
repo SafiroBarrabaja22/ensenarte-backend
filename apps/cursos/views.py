@@ -78,9 +78,24 @@ def mi_progreso(request):
 #   - Un acierto solo puntua si esa pregunta no se habia fallado antes.
 
 def _intento_activo(user, curso):
-    return IntentoEvaluacion.objects.filter(
+    intento = IntentoEvaluacion.objects.filter(
         usuario=user, curso=curso, finalizado=False
     ).first()
+    if intento is None:
+        return None
+    # Si se borraron preguntas del curso despues de iniciar el intento, este ya
+    # no se puede continuar: se descarta para que el usuario empiece de nuevo.
+    existentes = set(
+        Pregunta.objects.filter(curso=curso, id__in=intento.orden).values_list(
+            "id", flat=True
+        )
+    )
+    if not intento.orden or any(
+        pregunta_id not in existentes for pregunta_id in intento.orden
+    ):
+        intento.delete()
+        return None
+    return intento
 
 
 @api_view(["POST"])
@@ -102,6 +117,8 @@ def iniciar_evaluacion(request, slug):
         )
 
     random.shuffle(ids)
+    if curso.preguntas_por_evaluacion:
+        ids = ids[: curso.preguntas_por_evaluacion]
 
     # Un intento abierto por usuario y curso: el anterior se descarta.
     IntentoEvaluacion.objects.filter(
@@ -205,6 +222,9 @@ def responder_evaluacion(request, slug):
         )
 
     falladas = set(intento.falladas or [])
+    respuestas = intento.respuestas or {}
+    respuestas.setdefault(str(pregunta_id), []).append(opcion.id)
+    intento.respuestas = respuestas
 
     if opcion.es_correcta:
         if pregunta_id not in falladas:
@@ -255,13 +275,23 @@ def _resultado(intento, insignia_100_nueva=False):
     recurso = progreso.curso.insignia_100 if progreso and progreso.insignia_100_ganada else None
     imagen = f"/{recurso.archivo.url.lstrip('/')}" if recurso and recurso.archivo else ""
     falladas = set(intento.falladas or [])
-    preguntas = Pregunta.objects.in_bulk(intento.orden or [])
+    respuestas = intento.respuestas or {}
+    preguntas = Pregunta.objects.prefetch_related("opciones").in_bulk(
+        intento.orden or []
+    )
     detalle_preguntas = [
         {
             "etiqueta": str(indice + 1),
             "texto": preguntas[pregunta_id].texto,
+            "video": preguntas[pregunta_id].video or "",
             "acierto": pregunta_id not in falladas,
             "detalle": "Correcta" if pregunta_id not in falladas else "Incorrecta",
+            # El intento ya esta cerrado: se puede mostrar cual era la correcta.
+            "opciones": [
+                {"id": opcion.id, "texto": opcion.texto, "es_correcta": opcion.es_correcta}
+                for opcion in preguntas[pregunta_id].opciones.all()
+            ],
+            "elegidas": respuestas.get(str(pregunta_id), []),
         }
         for indice, pregunta_id in enumerate(intento.orden or [])
         if pregunta_id in preguntas

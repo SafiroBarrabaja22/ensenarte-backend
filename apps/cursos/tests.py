@@ -41,8 +41,6 @@ class InsigniaCurso100Tests(TestCase):
             nombre="abecedario",
             titulo="Abecedario",
             portada_curso="",
-            imagen_diccionario="",
-            imagen_evaluacion="",
             insignia_100=self.insignia,
         )
 

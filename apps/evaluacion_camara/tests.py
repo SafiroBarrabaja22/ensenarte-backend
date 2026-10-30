@@ -34,8 +34,6 @@ class EvaluacionCamaraTests(APITestCase):
             nombre="abecedario",
             titulo="Abecedario",
             portada_curso="",
-            imagen_diccionario="",
-            imagen_evaluacion="",
         )
         insignia = RecursoVisual.objects.create(
             nombre="Curso 100%",
@@ -210,8 +208,6 @@ class EvaluacionCamaraTests(APITestCase):
             nombre="saludos",
             titulo="Saludos",
             portada_curso="",
-            imagen_diccionario="",
-            imagen_evaluacion="",
         )
         segunda = self.client.post(
             URL,

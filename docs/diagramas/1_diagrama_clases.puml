@@ -1,0 +1,167 @@
+@startuml 1_diagrama_clases
+title enSEÑArte — Diagrama de clases (modelo de dominio)
+skinparam classAttributeIconSize 0
+skinparam class {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B8C
+  ArrowColor #3B5B8C
+}
+skinparam packageStyle rectangle
+skinparam shadowing false
+hide empty members
+
+package "usuarios" #EEF3FA {
+  class User <<Django>> {
+    + id : int
+    + username : str
+    + email : str
+    + password : str
+    + is_staff : bool
+    + is_superuser : bool
+  }
+
+  class Grupo <<Django Group>> {
+    + name : str
+  }
+  note right of Grupo
+    Roles del sistema:
+    · Profesor
+    · Interprete
+    · CreadorDeCursos
+    (sin grupo = Estudiante)
+  end note
+
+  class PerfilUsuario {
+    + foto_perfil : ImageField
+    + avatar : str
+    + estrellas : int
+  }
+}
+
+package "cursos" #F3F8EE {
+  enum CategoriaRecurso {
+    RECURSO
+    AVATAR
+    INSIGNIA
+    CURSO_100
+  }
+
+  class RecursoVisual {
+    + nombre : str
+    + archivo : ImageField
+    + categoria : CategoriaRecurso
+    + fecha_creacion : datetime
+  }
+
+  class Curso {
+    + nombre : slug {unique}
+    + titulo : str
+    + portada_curso : str
+    + insignia : str
+    + descripcion : str
+    + fecha_creacion : datetime
+    + fecha_modificacion : datetime
+    + activo : bool
+  }
+
+  class Pregunta {
+    + texto : str
+    + video : str  <<gif>>
+  }
+
+  class OpcionPregunta {
+    + texto : str
+    + es_correcta : bool
+  }
+
+  class PalabraDiccionario {
+    + titulo : str
+    + imagen_frontal : str
+    + video_gif : str
+  }
+
+  class IntentoEvaluacion {
+    + orden : list<int>
+    + indice_actual : int
+    + aciertos : int
+    + errores : int
+    + falladas : list<int>
+    + finalizado : bool
+    + fecha_inicio : datetime
+    + fecha_actualizacion : datetime
+    --
+    + total_preguntas() : int
+    + pregunta_actual_id() : int
+    + mensaje_retroalimentacion() : str
+  }
+
+  class ProgresoUsuario {
+    + aciertos : int
+    + errores : int
+    + completado : bool
+    + insignia_100_ganada : bool
+    + fecha_ultima_actividad : datetime
+  }
+}
+
+package "evaluacion_camara" #FBF3EA {
+  class EvaluacionCamara {
+    + total : int
+    + correctas : int
+    + porcentaje : int
+    + aprobado : bool
+    + umbral_aplicado : int
+    + fecha : datetime
+  }
+
+  class IntentoCamara {
+    + orden : int
+    + letra_objetivo : str
+    + acerto : bool
+    + tiempo_ms : int
+    + confianza : float [0..1]
+  }
+}
+
+' --- Relaciones de usuarios ---
+User "1" -- "0..1" PerfilUsuario : tiene >
+User "*" -- "*" Grupo : pertenece a >
+
+' --- Autoría ---
+User "0..1" -- "*" RecursoVisual : sube >
+User "0..1" -- "*" Curso : crea >
+RecursoVisual ..> CategoriaRecurso
+
+' --- Composición del curso ---
+Curso "1" *-- "*" Pregunta : evaluación
+Pregunta "1" *-- "0..4" OpcionPregunta : opciones
+Curso "1" *-- "*" PalabraDiccionario : diccionario
+Curso "*" o-- "0..1" RecursoVisual : insignia_100 >
+
+' Los campos de imagen/gif guardan la ruta de un RecursoVisual
+Curso ..> RecursoVisual : usa rutas de >
+Pregunta ..> RecursoVisual : usa gif de >
+PalabraDiccionario ..> RecursoVisual : usa imagen/gif de >
+
+' --- Evaluación y progreso ---
+User "1" -- "*" IntentoEvaluacion : realiza >
+Curso "1" -- "*" IntentoEvaluacion
+IntentoEvaluacion ..> Pregunta : recorre (orden)
+User "1" -- "*" ProgresoUsuario
+Curso "1" -- "*" ProgresoUsuario
+note bottom of ProgresoUsuario
+  unique (usuario, curso)
+  Se consolida al cerrar un intento;
+  se guardan máx. 5 intentos finalizados.
+end note
+
+User "1" -- "*" EvaluacionCamara : presenta >
+Curso "0..1" -- "*" EvaluacionCamara
+EvaluacionCamara "1" *-- "*" IntentoCamara : intentos
+note bottom of EvaluacionCamara
+  aprobado = porcentaje >= umbral_aplicado (70 %)
+end note
+
+note "Regla: solo una OpcionPregunta\npor Pregunta es_correcta = true" as N1
+N1 .. OpcionPregunta
+@enduml

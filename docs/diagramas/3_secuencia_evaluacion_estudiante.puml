@@ -1,0 +1,144 @@
+@startuml 3_secuencia_evaluacion_estudiante
+title enSEÑArte — Secuencia: el estudiante realiza una evaluación
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+skinparam sequence {
+  ParticipantBorderColor #3B5B8C
+  LifeLineBorderColor #3B5B8C
+  ArrowColor #3B5B8C
+  ParticipantBackgroundColor #EEF3FA
+}
+autonumber
+
+actor Estudiante as EST
+participant Frontend as FE
+participant Backend as BE
+database "Base de datos" as DB
+
+== Inicio de sesión ==
+EST -> FE : Entra a la página
+activate FE
+FE --> EST : Muestra la página de inicio
+EST -> FE : Ingresa usuario y contraseña
+FE -> BE : Validar credenciales
+activate BE
+BE -> DB : Consultar usuario
+activate DB
+DB -> DB : Buscar usuario y\ncomparar contraseña
+DB --> BE : Resultado de la validación
+deactivate DB
+alt Credenciales correctas
+  BE --> FE : Sesión iniciada (token)
+  FE --> EST : Muestra el inicio del estudiante
+else Credenciales incorrectas
+  BE --> FE : Error de autenticación
+  FE --> EST : "Usuario o contraseña inválidos"
+end
+deactivate BE
+
+== Selección del curso ==
+EST -> FE : Elige un curso
+FE -> BE : Obtener el curso
+activate BE
+BE -> DB : Consultar curso
+activate DB
+DB -> DB : Buscar curso activo
+DB --> BE : Datos del curso
+deactivate DB
+BE --> FE : Curso
+deactivate BE
+FE --> EST : Muestra la vista del curso
+
+EST -> FE : Entra a la evaluación
+FE -> BE : Obtener historial de intentos
+activate BE
+BE -> DB : Consultar intentos
+activate DB
+DB -> DB : Filtrar los últimos 5\nintentos terminados
+DB --> BE : Intentos
+deactivate DB
+BE --> FE : Historial
+deactivate BE
+FE --> EST : Muestra la vista de la evaluación\ncon su historial
+
+== Evaluación ==
+EST -> FE : Clic en "Comenzar evaluación"
+FE -> BE : Iniciar evaluación
+activate BE
+BE -> DB : Consultar intento en curso
+activate DB
+DB -> DB : Buscar intento sin terminar
+DB --> BE : Resultado
+deactivate DB
+alt Tiene un intento sin terminar
+  BE --> FE : Continuar intento
+else No tiene intento
+  BE -> DB : Consultar preguntas del curso
+  activate DB
+  DB -> DB : Buscar preguntas con opciones
+  DB --> BE : Preguntas
+  deactivate DB
+  BE -> BE : Ordenar preguntas al azar
+  BE -> DB : Guardar nuevo intento
+  activate DB
+  DB -> DB : Registrar intento
+  DB --> BE : Intento creado
+  deactivate DB
+  BE --> FE : Primera pregunta
+end
+deactivate BE
+
+loop Hasta responder todas las preguntas
+  FE --> EST : Muestra pregunta, seña (GIF) y opciones
+  EST -> FE : Selecciona una opción y "Comprobar"
+  FE -> BE : Enviar respuesta
+  activate BE
+  BE -> DB : Consultar opción elegida
+  activate DB
+  DB -> DB : Verificar si la opción\nes la correcta
+  DB --> BE : Resultado
+  deactivate DB
+  alt Respuesta correcta
+    BE -> DB : Actualizar intento
+    activate DB
+    DB -> DB : Sumar acierto y\npasar a la siguiente
+    DB --> BE : Intento actualizado
+    deactivate DB
+    alt Quedan preguntas
+      BE --> FE : Correcta + siguiente pregunta
+      FE --> EST : "¡Muy bien!" → Siguiente
+    else Era la última
+      BE -> DB : Cerrar intento
+      activate DB
+      DB -> DB : Guardar progreso, estrellas\ne insignia; borrar intentos viejos
+      DB --> BE : Progreso guardado
+      deactivate DB
+      BE --> FE : Evaluación terminada
+      FE --> EST : "¡Muy bien!" → Ver resultado
+    end
+  else Respuesta incorrecta
+    BE -> DB : Actualizar intento
+    activate DB
+    DB -> DB : Sumar error y marcar\npregunta como fallada
+    DB --> BE : Intento actualizado
+    deactivate DB
+    BE --> FE : Incorrecta
+    FE --> EST : "Casi. Inténtalo de nuevo"
+  end
+  deactivate BE
+end
+
+== Resultado ==
+EST -> FE : Clic en "Ver resultado"
+FE -> BE : Obtener resultado
+activate BE
+BE -> DB : Consultar resultado
+activate DB
+DB -> DB : Buscar último intento\ny progreso del curso
+DB --> BE : Datos del resultado
+deactivate DB
+BE --> FE : Resultado
+deactivate BE
+FE --> EST : Muestra aciertos, errores, porcentaje,\nmensaje e insignia (si la ganó)
+deactivate FE
+@enduml

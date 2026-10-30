@@ -53,8 +53,12 @@ class Curso(models.Model):
         max_length=255,
         help_text="Nombre del archivo dentro de assets/imagenes del frontend.",
     )
-    imagen_diccionario = models.CharField(max_length=255)
-    imagen_evaluacion = models.CharField(max_length=255)
+    icono_curso = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Imagen cuadrada de la cabecera del curso. Vacio = usa la portada.",
+    )
     insignia = models.CharField(max_length=255, blank=True, default="")
     insignia_100 = models.ForeignKey(
         RecursoVisual,
@@ -65,6 +69,11 @@ class Curso(models.Model):
         limit_choices_to={"categoria": RecursoVisual.Categoria.CURSO_100},
     )
     descripcion = models.TextField(blank=True, null=True)
+    preguntas_por_evaluacion = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text="Cuantas preguntas al azar salen en cada intento. Vacio = todas.",
+    )
 
     creado_por = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
@@ -126,9 +135,10 @@ class PalabraDiccionario(models.Model):
     titulo = models.CharField(max_length=100)
     imagen_frontal = models.CharField(max_length=200)
     video_gif = models.CharField(max_length=200)
+    orden = models.PositiveIntegerField(default=0)
 
     class Meta:
-        ordering = ("titulo",)
+        ordering = ("orden", "titulo")
         verbose_name = "Palabra del diccionario"
         verbose_name_plural = "Palabras del diccionario"
 
@@ -185,6 +195,10 @@ class IntentoEvaluacion(models.Model):
     errores = models.PositiveIntegerField(default=0)
     falladas = models.JSONField(
         default=list, help_text="IDs de preguntas falladas al menos una vez."
+    )
+    respuestas = models.JSONField(
+        default=dict,
+        help_text="Opciones elegidas por pregunta, en orden: {pregunta_id: [opcion_id, ...]}.",
     )
     finalizado = models.BooleanField(default=False)
 

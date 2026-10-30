@@ -1,0 +1,95 @@
+@startuml 4_actividad_profesor_crea_curso
+title enSEÑArte — Actividad: el profesor crea un curso
+skinparam shadowing false
+skinparam ActivityDiamondBackgroundColor #FFF8E1
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B8C
+  ArrowColor #3B5B8C
+}
+skinparam swimlane {
+  BorderColor #3B5B8C
+  TitleFontStyle bold
+}
+
+' ================= INICIO DE SESIÓN =================
+|Profesor|
+start
+repeat
+  :Ingresar usuario y contraseñaa;
+  |Sistema|
+  :Verificar credenciales;
+  backward:Mostrar "Usuario o contraseña incorrectos";
+repeat while (¿Credenciales correctas?) is (no) not (sí)
+
+' ================= PANEL =================
+|Sistema|
+:Mostrar panel: resumen, formulario\n"Crear curso" y cursos registrados;
+
+' ================= CREAR CURSO =================
+|Profesor|
+repeat
+  :Escribir título, slug y descripción;
+  :Escoger imágenes del curso: portada,\nimagen de diccionario, imagen de evaluación,\ninsignia e insignia Curso 100 %;
+  :Clic en "Guardar curso";
+  |Sistema|
+  :Validar datos del curso\n(campos obligatorios y slug único);
+  backward:Mostrar los errores del formulario;
+repeat while (¿Datos correctos?) is (no) not (sí)
+|Sistema|
+:Guardar curso;
+:Mostrar lista de cursos registrados actualizada;
+
+' ================= DICCIONARIO =================
+|Profesor|
+:Entrar a "Diccionario" del curso;
+repeat
+  :Escribir la palabra;
+  :Escoger imagen frontal;
+  :Escoger GIF de la seña;
+  :Clic en "Agregar palabra";
+  |Sistema|
+  if (¿Palabra, imagen y GIF completos?) then (sí)
+    :Guardar palabra en el diccionario;
+    :Mostrar diccionario actualizado;
+  else (no)
+    :Mostrar "Todos los campos son obligatorios";
+  endif
+  |Profesor|
+repeat while (¿Agregar otra palabra?) is (sí) not (no)
+:Volver al panel;
+
+' ================= PREGUNTAS =================
+:Entrar a "Preguntas" del curso;
+repeat
+  repeat
+    |Profesor|
+    :Escribir el enunciado;
+    :Escoger GIF de la seña;
+    :Clic en "Agregar pregunta";
+    |Sistema|
+    :Validar campos de la pregunta;
+    backward:Mostrar "El enunciado es obligatorio";
+  repeat while (¿Enunciado completo?) is (no) not (sí)
+  |Sistema|
+  :Agregar pregunta;
+  |Profesor|
+  repeat
+    :Escribir una respuesta;
+    |Sistema|
+    :Guardar respuesta;
+    |Profesor|
+  repeat while (¿Agregar otra respuesta?\n(máximo 4)) is (sí) not (no)
+  :Marcar la respuesta correcta;
+  |Sistema|
+  :Guardar la correcta y desmarcar\nlas demás (solo una correcta);
+  :Mostrar pregunta con sus respuestas;
+  |Profesor|
+repeat while (¿Agregar otra pregunta?) is (sí) not (no)
+:Volver al panel;
+
+' ================= FIN =================
+|Sistema|
+:Mostrar el curso guardado con todos los cambios\n(diccionario y evaluación listos);
+stop
+@enduml

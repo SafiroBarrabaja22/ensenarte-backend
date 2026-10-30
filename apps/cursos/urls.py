@@ -65,5 +65,10 @@ urlpatterns = [
         views_panel.subir_gif_pregunta,
         name="subir_gif_pregunta",
     ),
+    path(
+        "panel/archivos/",
+        views_panel.subir_archivo_contenido,
+        name="subir_archivo_contenido",
+    ),
     path("panel/", include(router.urls)),
 ]

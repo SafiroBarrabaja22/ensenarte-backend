@@ -1,9 +1,13 @@
+import uuid
+from pathlib import Path
+
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -17,6 +21,7 @@ from .serializers import (
     OpcionPanelSerializer,
     PalabraPanelSerializer,
     PreguntaPanelSerializer,
+    FORMATOS_IMAGEN_PERMITIDOS,
     RecursoVisualSerializer,
 )
 
@@ -42,6 +47,8 @@ class PreguntaViewSet(viewsets.ModelViewSet):
 
     serializer_class = PreguntaPanelSerializer
     permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
+    # Sin paginar: el panel muestra y cuenta todas las preguntas del curso.
+    pagination_class = None
 
     def get_queryset(self):
         queryset = Pregunta.objects.select_related("curso").prefetch_related("opciones")
@@ -86,6 +93,8 @@ class PalabraViewSet(viewsets.ModelViewSet):
 
     serializer_class = PalabraPanelSerializer
     permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
+    # Sin paginar: para reordenar hace falta la lista completa del curso.
+    pagination_class = None
 
     def get_queryset(self):
         queryset = PalabraDiccionario.objects.select_related("curso")
@@ -94,11 +103,59 @@ class PalabraViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(curso_id=curso_id)
         return queryset
 
+    def perform_create(self, serializer):
+        """Las palabras nuevas quedan al final del diccionario."""
+        curso = serializer.validated_data["curso"]
+        ultimo = PalabraDiccionario.objects.filter(curso=curso).aggregate(
+            maximo=Max("orden")
+        )["maximo"]
+        serializer.save(orden=(ultimo or 0) + 1)
+
+    @action(detail=False, methods=["post"])
+    def reordenar(self, request):
+        """POST /api/panel/diccionario/reordenar/ {"curso": id, "ids": [...]}"""
+        curso_id = request.data.get("curso")
+        ids = request.data.get("ids")
+        if not curso_id or not isinstance(ids, list):
+            return Response(
+                {"detail": "Debes enviar 'curso' y la lista 'ids'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        palabras = {
+            palabra.id: palabra
+            for palabra in PalabraDiccionario.objects.filter(curso_id=curso_id)
+        }
+        try:
+            ids = [int(valor) for valor in ids]
+        except (TypeError, ValueError):
+            ids = []
+        if sorted(ids) != sorted(palabras):
+            return Response(
+                {"detail": "La lista debe incluir todas las palabras del curso."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        with transaction.atomic():
+            for posicion, palabra_id in enumerate(ids, start=1):
+                palabra = palabras[palabra_id]
+                if palabra.orden != posicion:
+                    palabra.orden = posicion
+                    palabra.save(update_fields=["orden"])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
 
 class RecursoVisualViewSet(viewsets.ModelViewSet):
     queryset = RecursoVisual.objects.all()
     serializer_class = RecursoVisualSerializer
     parser_classes = (JSONParser, MultiPartParser, FormParser)
+
+    def paginate_queryset(self, queryset):
+        """Pagina (50 por pagina) solo si se pide ?page=N, como hace la biblioteca.
+
+        Los selectores de imagenes y avatares no envian page y reciben la lista completa.
+        """
+        if "page" not in self.request.query_params:
+            return None
+        return super().paginate_queryset(queryset)
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -138,8 +195,7 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         esta_en_uso = (
             Curso.objects.filter(
                 Q(portada_curso=ruta)
-                | Q(imagen_diccionario=ruta)
-                | Q(imagen_evaluacion=ruta)
+                | Q(icono_curso=ruta)
                 | Q(insignia=ruta)
             ).exists()
             or Curso.objects.filter(insignia_100=recurso).exists()
@@ -225,3 +281,34 @@ def subir_gif_pregunta(request, pk):
     pregunta.video = default_storage.url(ruta)
     pregunta.save(update_fields=["video"])
     return Response(PreguntaPanelSerializer(pregunta).data)
+
+
+@api_view(["POST"])
+@permission_classes([PUEDE_SUBIR_GIF])
+def subir_archivo_contenido(request):
+    """POST /api/panel/archivos/ -> sube una imagen de uso puntual.
+
+    El archivo queda en media/contenido/ y NO se registra en la biblioteca,
+    asi que no aparece como recurso para otros cursos.
+    """
+    archivo = request.FILES.get("archivo")
+    if not archivo:
+        return Response(
+            {"detail": "Debes adjuntar el archivo en el campo 'archivo'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    extension = Path(archivo.name or "").suffix.lower()
+    if extension not in FORMATOS_IMAGEN_PERMITIDOS:
+        return Response(
+            {"detail": "Formato de imagen no permitido."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    if archivo.size > 10 * 1024 * 1024:
+        return Response(
+            {"detail": "El archivo no puede superar 10 MB."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    ruta = default_storage.save(f"contenido/{uuid.uuid4().hex}{extension}", archivo)
+    url = f"/{default_storage.url(ruta).lstrip('/')}"
+    return Response({"archivo_url": url}, status=status.HTTP_201_CREATED)

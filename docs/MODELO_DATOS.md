@@ -38,8 +38,7 @@ erDiagram
         slug nombre UK
         string titulo
         string portada_curso
-        string imagen_diccionario
-        string imagen_evaluacion
+        string icono_curso
         text descripcion
         int creado_por_id FK
         datetime fecha_creacion
@@ -117,8 +116,7 @@ señal cada vez que nace un `User`, incluidos los creados desde el admin.
 | `nombre` | SlugField único | No | Identificador usado en las URLs del frontend. |
 | `titulo` | CharField(100) | No | Nombre visible del curso. |
 | `portada_curso` | CharField(255) | No | Archivo de portada en `assets/imagenes/`. |
-| `imagen_diccionario` | CharField(255) | No | Imagen de la tarjeta de diccionario. |
-| `imagen_evaluacion` | CharField(255) | No | Imagen de la tarjeta de evaluación. |
+| `icono_curso` | CharField(255) | Sí | Imagen cuadrada de la cabecera del curso. Si está vacía se usa la portada. |
 | `descripcion` | TextField | Sí | Texto descriptivo del curso. |
 | `creado_por` | FK → User | Sí | Autor. `SET_NULL` si se borra el usuario. |
 | `fecha_creacion` | DateTime | No | Se fija al crear. |

@@ -21,16 +21,12 @@ CURSOS = [
         "titulo": "Abecedario",
         "descripcion": "Curso basico del abecedario en lengua de senas colombiana.",
         "portada_curso": "portadaAbecedario.jpg",
-        "imagen_diccionario": "portadaAbecedario.jpg",
-        "imagen_evaluacion": "evaluacionInicio.jpg",
     },
     {
         "nombre": "saludos",
         "titulo": "Saludos y cortesia",
         "descripcion": "Expresiones basicas para presentarse y saludar.",
         "portada_curso": "cursos.jpg",
-        "imagen_diccionario": "livres.jpg",
-        "imagen_evaluacion": "evaluacionInicio.jpg",
     },
 ]
 

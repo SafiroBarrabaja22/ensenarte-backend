@@ -1,0 +1,91 @@
+@startuml 4_actividad_profesor_crud_curso
+title enSEÑArte — Actividad: el profesor crea, modifica y elimina un curso
+skinparam shadowing false
+skinparam ActivityDiamondBackgroundColor #FFF8E1
+skinparam activity {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B8C
+  ArrowColor #3B5B8C
+}
+skinparam swimlane {
+  BorderColor #3B5B8C
+  TitleFontStyle bold
+}
+
+' ================= INICIO DE SESIÓN =================
+|Profesor|
+start
+repeat
+  :Iniciar sesión;
+  |Sistema|
+  :Verificar credenciales;
+  backward:Mostrar error;
+repeat while (¿Credenciales correctas?) is (no) not (sí)
+:Mostrar panel con los cursos;
+
+' ================= CREAR / MODIFICAR =================
+|Profesor|
+if (¿Crear o modificar un curso?) then (sí)
+  repeat
+    |Profesor|
+    :Llenar formulario del curso;
+    |Sistema|
+    :Validar datos;
+    backward:Mostrar error;
+  repeat while (¿Datos correctos?) is (no) not (sí)
+  :Guardar curso;
+  |Profesor|
+else (no)
+endif
+
+' ================= CONTENIDO =================
+if (¿Gestionar contenido del curso?) then (sí)
+  :Entrar a "Diccionario";
+  repeat
+    |Profesor|
+    :Llenar formulario de la palabra;
+    |Sistema|
+    :Guardar palabra;
+    |Profesor|
+  repeat while (¿Otra palabra?) is (sí) not (no)
+  :Ordenar palabras arrastrándolas;
+  :Clic en "Volver";
+
+  :Entrar a "Preguntas";
+  repeat
+    repeat
+      |Profesor|
+      :Escribir el enunciado;
+      |Sistema|
+      :Validar enunciado;
+      backward:Mostrar error;
+    repeat while (¿Enunciado escrito?) is (no) not (sí)
+    |Profesor|
+    :Agregar respuestas (máx. 4)\ny escoger la correcta;
+    |Sistema|
+    :Guardar pregunta;
+    |Profesor|
+  repeat while (¿Otra pregunta?) is (sí) not (no)
+  :Escoger cuántas preguntas\nsalen en cada intento;
+  |Sistema|
+  :Guardar configuración;
+  |Profesor|
+  :Clic en "Volver";
+else (no)
+endif
+
+' ================= ELIMINAR =================
+if (¿Eliminar un curso?) then (sí)
+  if (¿Confirma la eliminación?) then (sí)
+    |Sistema|
+    :Eliminar curso con su contenido;
+    |Profesor|
+  else (no)
+  endif
+else (no)
+endif
+
+|Sistema|
+:Mostrar cursos actualizados;
+stop
+@enduml

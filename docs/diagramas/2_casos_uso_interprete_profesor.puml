@@ -1,0 +1,80 @@
+@startuml 2_casos_uso_interprete_profesor
+title enSEÑArte — Casos de uso: Intérprete y Profesor
+left to right direction
+skinparam shadowing false
+skinparam nodesep 25
+skinparam ranksep 60
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #3B5B8C
+  ArrowColor #3B5B8C
+}
+skinparam rectangle {
+  BorderColor #3B5B8C
+}
+skinparam actorStyle awesome
+
+actor "Intérprete" as INT
+actor "Profesor" as PROF
+
+rectangle "Sistema enSEÑArte — Panel de contenido" {
+
+  rectangle "Biblioteca de recursos" #F3F8EE {
+    usecase "Cargar recurso visual" as UC_CARGAR
+    usecase "Cargar insignia de curso" as UC_INSIG
+    usecase "Cargar insignia Curso 100 %" as UC_INSIG100
+    usecase "Cargar foto / imagen del curso" as UC_FOTO
+    usecase "Cargar GIF de seña" as UC_GIF
+    usecase "Cargar avatar" as UC_AVATAR
+    usecase "Editar recurso" as UC_EDITREC
+    usecase "Eliminar recurso" as UC_DELREC
+    usecase "Rechazar eliminación\n(recurso en uso)" as UC_ENUSO
+    usecase "Consultar biblioteca\nde recursos" as UC_BIBLIO
+  }
+
+  rectangle "Gestión de cursos" #EEF3FA {
+    usecase "Crear curso" as UC_CURSO
+    usecase "Seleccionar recursos\nde la biblioteca" as UC_SELREC
+    usecase "Editar / eliminar curso" as UC_EDCURSO
+    usecase "Crear preguntas\nde evaluación" as UC_PREG
+    usecase "Agregar opciones (máx. 4)" as UC_OPC
+    usecase "Marcar opción correcta" as UC_CORR
+    usecase "Crear diccionario del curso" as UC_DICC
+    usecase "Agregar palabra (imagen + GIF)" as UC_PAL
+    usecase "Consultar estrellas\nde estudiantes" as UC_ESTR
+  }
+}
+
+' ---- Intérprete ----
+INT --> UC_CARGAR
+INT --> UC_EDITREC
+INT --> UC_DELREC
+INT --> UC_BIBLIO
+UC_CARGAR <|-- UC_INSIG
+UC_CARGAR <|-- UC_INSIG100
+UC_CARGAR <|-- UC_FOTO
+UC_CARGAR <|-- UC_GIF
+UC_CARGAR <|-- UC_AVATAR
+UC_DELREC <.. UC_ENUSO : <<extend>>
+
+' ---- Profesor ----
+UC_CURSO <-- PROF
+UC_EDCURSO <-- PROF
+UC_PREG <-- PROF
+UC_DICC <-- PROF
+UC_ESTR <-- PROF
+
+UC_CURSO ..> UC_SELREC : <<include>>
+UC_CURSO ..> UC_PREG : <<include>>
+UC_CURSO ..> UC_DICC : <<include>>
+UC_PREG ..> UC_OPC : <<include>>
+UC_OPC <.. UC_CORR : <<extend>>
+UC_PREG ..> UC_SELREC : <<include>>
+UC_DICC ..> UC_PAL : <<include>>
+UC_PAL ..> UC_SELREC : <<include>>
+UC_SELREC ..> UC_BIBLIO : <<include>>
+
+note "Precondición de todos los casos:\nel usuario inició sesión y pertenece\nal grupo Interprete o Profesor." as NPRE
+note "El profesor reutiliza lo que cargó el intérprete:\nportada, imágenes, insignias y GIFs de las señas\npara las preguntas y el diccionario." as NREU
+NREU .. UC_SELREC
+@enduml

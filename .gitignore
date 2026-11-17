@@ -26,3 +26,12 @@ db.sqlite3-journal
 .idea/
 .DS_Store
 Thumbs.db
+
+# Volcados y respaldos de base de datos: pueden contener usuarios, correos y
+# hashes de contrasenas. NUNCA se suben: el repositorio es publico.
+*.sql
+*.sql.gz
+*.dump
+datos.json
+db.sqlite3*
+*.sqlite3

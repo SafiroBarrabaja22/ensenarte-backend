@@ -51,3 +51,20 @@ STORAGES = {
 }
 # WhiteNoise avisa si STATIC_ROOT no existe (en local nadie corre collectstatic).
 STATIC_ROOT = tempfile.mkdtemp(prefix="ensenarte-pruebas-static-")
+
+# Cache en memoria (la de base de datos necesita su tabla). conftest.py la
+# limpia antes de cada prueba para que los limites de intentos no se mezclen.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
+# Los correos de recuperacion se envian en el mismo hilo para poder revisarlos.
+CORREOS_EN_SEGUNDO_PLANO = False
+
+# El limite general (anon/user) no debe interferir con las pruebas que hacen
+# muchas peticiones seguidas; tests/test_seguridad_acceso.py lo prueba aparte.
+REST_FRAMEWORK = {
+    **REST_FRAMEWORK,  # noqa: F405
+    "DEFAULT_THROTTLE_RATES": {
+        **REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"],  # noqa: F405
+        "anon": "100000/min",
+        "user": "100000/min",
+    },
+}

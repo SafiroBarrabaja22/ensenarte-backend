@@ -17,14 +17,16 @@ Un correo nunca debe tumbar la operacion que lo dispara (registro, evaluacion):
 """
 
 import logging
+import threading
 from email.mime.image import MIMEImage
 from functools import partial, wraps
 
 import django
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.db import transaction
+from django.db import connection, transaction
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from config.marca import COLORES as MARCA_COLORES
 from config.marca import FUENTE_CORREO, RUTA_LOGO
@@ -108,6 +110,25 @@ def al_confirmar(funcion, *args):
     transaction.on_commit(partial(funcion, *args), robust=True)
 
 
+def en_segundo_plano(funcion, *args):
+    """
+    Envia en otro hilo y responde de inmediato. La recuperacion de contrasena lo
+    usa para que la respuesta tarde lo mismo exista o no la cuenta. Con
+    CORREOS_EN_SEGUNDO_PLANO=False (pruebas) se ejecuta en el mismo hilo.
+    """
+    if not settings.CORREOS_EN_SEGUNDO_PLANO:
+        funcion(*args)
+        return
+
+    def tarea():
+        try:
+            funcion(*args)
+        finally:
+            connection.close()   # cada hilo abre su propia conexion a la base
+
+    threading.Thread(target=tarea, daemon=True).start()
+
+
 def sin_romper(funcion):
     """
     Un correo nunca rompe la operacion que lo dispara: cualquier error (datos
@@ -174,5 +195,42 @@ def avisar_curso_completado(curso, estudiante):
         "curso_completado",
         {"profesor": profesor.username, "estudiante": estudiante.username, "curso": curso},
         [profesor.email],
+    )
+    return enviar(correo)
+
+
+@sin_romper
+def enviar_recuperacion(usuario, uid, token):
+    """
+    4. Enlace para restablecer la contrasena. El uid y el token van en el
+    fragmento (#) de la URL: el navegador nunca lo envia a ningun servidor ni
+    aparece en registros de acceso ni en la cabecera Referer.
+    """
+    if not usuario.email:
+        return False
+    correo = construir(
+        "Restablece tu contraseña de enSEÑArte",
+        "recuperar_password",
+        {
+            "nombre": usuario.username,
+            "enlace": f"{settings.URL_FRONTEND.rstrip('/')}/pages/recuperar.html#uid={uid}&token={token}",
+            "minutos": max(1, settings.PASSWORD_RESET_TIMEOUT // 60),
+            "fecha": timezone.localtime(),
+        },
+        [usuario.email],
+    )
+    return enviar(correo)
+
+
+@sin_romper
+def avisar_password_cambiado(usuario, motivo="cambio"):
+    """5. Aviso de que la contrasena cambio (por recuperacion o desde el perfil)."""
+    if not usuario.email:
+        return False
+    correo = construir(
+        "Tu contraseña de enSEÑArte cambió",
+        "password_cambiado",
+        {"nombre": usuario.username, "motivo": motivo, "fecha": timezone.localtime()},
+        [usuario.email],
     )
     return enviar(correo)

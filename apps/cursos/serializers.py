@@ -3,20 +3,9 @@ from pathlib import Path
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-FORMATOS_IMAGEN_PERMITIDOS = {
-    ".png",
-    ".gif",
-    ".jpg",
-    ".jpeg",
-    ".jfif",
-    ".webp",
-    ".bmp",
-    ".tif",
-    ".tiff",
-    ".avif",
-    ".heic",
-    ".heif",
-}
+from config.limites import MAX_DESCRIPCION_CURSO
+
+from .archivos import validar_imagen
 
 from .models import (
     MAXIMO_OPCIONES_POR_PREGUNTA,
@@ -212,13 +201,8 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
         return fields
 
     def validate_archivo(self, archivo):
-        extension = Path(archivo.name or "").suffix.lower()
-        if extension not in FORMATOS_IMAGEN_PERMITIDOS:
-            raise serializers.ValidationError(
-                "Formatos permitidos: PNG, GIF, JPG, JPEG, JFIF, WEBP, BMP, TIFF, AVIF, HEIC y HEIF."
-            )
-        if archivo.size > 10 * 1024 * 1024:
-            raise serializers.ValidationError("El archivo no puede superar 10 MB.")
+        # ruta_recurso_visual (models.py) ya guarda con un UUID como nombre.
+        validar_imagen(archivo)
         return archivo
 
     def validate(self, attrs):
@@ -269,6 +253,8 @@ class CursoPanelSerializer(serializers.ModelSerializer):
             "fecha_modificacion",
         )
         read_only_fields = ("creado_por", "fecha_creacion", "fecha_modificacion")
+        # descripcion es TextField (sin limite en la base): se limita aqui.
+        extra_kwargs = {"descripcion": {"max_length": MAX_DESCRIPCION_CURSO}}
 
     def get_insignia_100_url(self, obj) -> str:
         recurso = obj.insignia_100

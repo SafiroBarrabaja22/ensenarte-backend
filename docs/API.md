@@ -67,7 +67,12 @@ Público. Crea un usuario y su perfil.
 ```
 
 La contraseña pasa por los validadores de Django: mínimo 8 caracteres, no
-puede ser solo numérica ni una contraseña común.
+puede ser solo numérica ni una contraseña común. Siempre crea un **Estudiante**:
+campos como `roles`, `is_staff` o `is_superuser` se ignoran.
+
+`sitio_web` es un campo trampa contra bots: el formulario lo tiene oculto y
+debe ir vacío o no enviarse. Si trae texto, responde **400** con
+`"No se pudo completar el registro."`. Límite: 30 registros por hora por IP (**429**).
 
 ## POST `/auth/login/`
 
@@ -93,6 +98,13 @@ Público.
 ```
 
 Credenciales inválidas devuelven **401**.
+
+- **Bloqueo por cuenta:** después de 5 contraseñas incorrectas seguidas para el
+  mismo usuario, responde **429** durante 15 minutos, aunque la contraseña sea
+  correcta. Pasa igual con usuarios que no existen, para no revelar cuáles
+  existen. Un login correcto reinicia el contador; restablecer la contraseña
+  también.
+- **Límite por IP:** 30 intentos por minuto (**429** con cabecera `Retry-After`).
 
 ## POST `/auth/refresh/`
 
@@ -125,6 +137,9 @@ Autenticado.
 { "password_actual": "ClaveVieja123", "password_nueva": "ClaveNueva456" }
 ```
 
+Cierra la sesión en todos los dispositivos (los refresh tokens pasan a la lista
+negra) y envía al correo del usuario el aviso "Tu contraseña cambió".
+
 ## POST `/auth/recuperar/solicitar/`
 
 Público. Paso 1 de la recuperación.
@@ -133,9 +148,24 @@ Público. Paso 1 de la recuperación.
 { "correo": "carlos@correo.com" }
 ```
 
-Responde siempre lo mismo exista o no el correo, para no revelar qué cuentas
-están registradas. Con `DEBUG=True` incluye además un objeto `debug` con el
-`uid` y el `token`, de modo que el flujo se pueda probar sin servidor de correo.
+Responde siempre lo mismo (**200**, mismo mensaje y mismo tiempo) exista o no
+el correo, para no revelar qué cuentas están registradas.
+
+Si el correo es de una cuenta activa, le envía un correo con el botón
+**"Sí, fui yo: restablecer contraseña"**, que abre:
+
+```
+<URL_FRONTEND>/pages/recuperar.html#uid=MQ&token=c1k2-...
+```
+
+- El enlace vence en 1 hora (`PASSWORD_RESET_TIMEOUT`) y sirve una sola vez.
+- `uid` y `token` van después de `#`: el navegador no los envía a ningún servidor.
+- Si el dueño no lo pidió, ignora el correo y su contraseña no cambia.
+- Límites: 10 solicitudes por hora por IP (**429**) y 3 correos por hora por
+  dirección (pasado ese número responde igual, pero no envía nada).
+
+Con `DEBUG=True` incluye además un objeto `debug` con el `uid` y el `token`, de
+modo que el flujo se pueda probar sin servidor de correo.
 
 ## POST `/auth/recuperar/confirmar/`
 
@@ -145,7 +175,14 @@ Público. Paso 2.
 { "uid": "MQ", "token": "c1k2-...", "password_nueva": "ClaveNueva456" }
 ```
 
-El token es de un solo uso y se invalida al cambiar la contraseña.
+El token es de un solo uso y se invalida al cambiar la contraseña. Un token
+vencido, usado o inventado responde **400**. Al restablecer:
+
+- se cierra la sesión en todos los dispositivos;
+- se levanta el bloqueo por intentos fallidos;
+- se envía al correo el aviso "Tu contraseña cambió".
+
+Límite: 20 por hora por IP (**429**).
 
 ---
 
@@ -510,3 +547,4 @@ evaluación.
 | 401 | Falta el token o expiró |
 | 403 | Autenticado pero sin permisos |
 | 404 | El recurso no existe |
+| 429 | Demasiados intentos (límite por IP o cuenta bloqueada); ver `detail` |

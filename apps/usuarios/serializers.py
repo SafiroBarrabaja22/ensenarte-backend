@@ -4,8 +4,17 @@ from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.serializers import PasswordField, TokenObtainPairSerializer
 
+from config.limites import (
+    MAX_CORREO,
+    MAX_NOMBRE_USUARIO,
+    MAX_PASSWORD,
+    MAX_TOKEN_RECUPERACION,
+    MAX_UID_RECUPERACION,
+)
+
+from apps.cursos.archivos import MAX_BYTES_FOTO_PERFIL, nombre_seguro, validar_imagen
 from apps.cursos.models import RecursoVisual
 
 from .models import PerfilUsuario
@@ -58,9 +67,20 @@ class PerfilSerializer(serializers.ModelSerializer):
 class RegistroSerializer(serializers.Serializer):
     """Reemplaza la vista `registro` del monolito, ahora con validaciones reales."""
 
-    nombre = serializers.CharField(max_length=150)
-    correo = serializers.EmailField()
-    password = serializers.CharField(write_only=True, min_length=8)
+    nombre = serializers.CharField(max_length=MAX_NOMBRE_USUARIO)
+    correo = serializers.EmailField(max_length=MAX_CORREO)
+    password = serializers.CharField(write_only=True, min_length=8, max_length=MAX_PASSWORD)
+    # Trampa para bots: el formulario tiene este campo oculto. Una persona no
+    # lo ve y lo deja vacio; un bot que rellena todos los campos lo llena.
+    sitio_web = serializers.CharField(
+        required=False, allow_blank=True, write_only=True, max_length=200,
+        help_text="Dejar vacío. Campo trampa contra bots: si trae texto, el registro se rechaza.",
+    )
+
+    def validate(self, attrs):
+        if attrs.pop("sitio_web", ""):
+            raise serializers.ValidationError("No se pudo completar el registro.")
+        return attrs
 
     def validate_nombre(self, value):
         if User.objects.filter(username__iexact=value).exists():
@@ -91,6 +111,14 @@ class RegistroSerializer(serializers.Serializer):
 class LoginSerializer(TokenObtainPairSerializer):
     """Devuelve el par de tokens JWT junto con los datos del usuario."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # simplejwt crea estos campos sin limite de longitud.
+        self.fields[self.username_field] = serializers.CharField(
+            write_only=True, max_length=MAX_NOMBRE_USUARIO
+        )
+        self.fields["password"] = PasswordField(max_length=MAX_PASSWORD)
+
     def validate(self, attrs):
         data = super().validate(attrs)
         perfil, _ = PerfilUsuario.objects.get_or_create(user=self.user)
@@ -103,10 +131,17 @@ class LoginSerializer(TokenObtainPairSerializer):
 class ActualizarPerfilSerializer(serializers.Serializer):
     """Edicion de perfil: nombre, correo y avatar o foto."""
 
-    nombre = serializers.CharField(max_length=150, required=False)
-    correo = serializers.EmailField(required=False)
+    nombre = serializers.CharField(max_length=MAX_NOMBRE_USUARIO, required=False)
+    correo = serializers.EmailField(max_length=MAX_CORREO, required=False)
     avatar = serializers.CharField(max_length=100, required=False)
     foto_perfil = serializers.ImageField(required=False, allow_null=True)
+
+    def validate_foto_perfil(self, archivo):
+        if archivo is None:          # null = quitar la foto
+            return archivo
+        extension = validar_imagen(archivo, max_bytes=MAX_BYTES_FOTO_PERFIL)
+        archivo.name = nombre_seguro(extension)   # el nombre original no llega al disco
+        return archivo
 
     def validate_nombre(self, value):
         user = self.context["request"].user
@@ -157,8 +192,8 @@ class ActualizarPerfilSerializer(serializers.Serializer):
 class CambiarPasswordSerializer(serializers.Serializer):
     """Cambio de contrasena estando autenticado. Exige la contrasena actual."""
 
-    password_actual = serializers.CharField(write_only=True)
-    password_nueva = serializers.CharField(write_only=True, min_length=8)
+    password_actual = serializers.CharField(write_only=True, max_length=MAX_PASSWORD)
+    password_nueva = serializers.CharField(write_only=True, min_length=8, max_length=MAX_PASSWORD)
 
     def validate_password_actual(self, value):
         user = self.context["request"].user
@@ -185,26 +220,32 @@ class SolicitarRecuperacionSerializer(serializers.Serializer):
     nombre. Aqui se exige el correo y se emite un token firmado de un solo uso.
     """
 
-    correo = serializers.EmailField()
+    correo = serializers.EmailField(max_length=MAX_CORREO)
 
-    def generar_token(self):
-        correo = self.validated_data["correo"]
-        user = User.objects.filter(email__iexact=correo).first()
-        if not user:
-            # Respuesta identica exista o no el correo, para no filtrar usuarios.
-            return None
-        return {
-            "uid": urlsafe_base64_encode(force_bytes(user.pk)),
-            "token": default_token_generator.make_token(user),
-        }
+    def cuentas(self):
+        """
+        Cuentas activas con ese correo y con contrasena (el registro impide
+        correos repetidos, pero el admin podria crearlos). Puede ser vacia: la
+        vista responde lo mismo en ese caso, para no revelar que correos existen.
+        """
+        usuarios = User.objects.filter(email__iexact=self.validated_data["correo"], is_active=True)
+        return [
+            {
+                "usuario": usuario,
+                "uid": urlsafe_base64_encode(force_bytes(usuario.pk)),
+                "token": default_token_generator.make_token(usuario),
+            }
+            for usuario in usuarios
+            if usuario.has_usable_password()
+        ]
 
 
 class ConfirmarRecuperacionSerializer(serializers.Serializer):
     """Paso 2 de la recuperacion: uid + token + contrasena nueva."""
 
-    uid = serializers.CharField()
-    token = serializers.CharField()
-    password_nueva = serializers.CharField(write_only=True, min_length=8)
+    uid = serializers.CharField(max_length=MAX_UID_RECUPERACION)
+    token = serializers.CharField(max_length=MAX_TOKEN_RECUPERACION)
+    password_nueva = serializers.CharField(write_only=True, min_length=8, max_length=MAX_PASSWORD)
 
     def validate(self, attrs):
         try:

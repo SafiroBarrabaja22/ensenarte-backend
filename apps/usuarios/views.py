@@ -2,6 +2,7 @@ from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -12,7 +13,13 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
-from apps.correos.servicio import al_confirmar, enviar_bienvenida
+from apps.correos.servicio import (
+    al_confirmar,
+    avisar_password_cambiado,
+    en_segundo_plano,
+    enviar_bienvenida,
+    enviar_recuperacion,
+)
 from config.openapi import (
     EJEMPLO_PERFIL,
     ETIQUETA_AUTENTICACION,
@@ -24,6 +31,14 @@ from config.openapi import (
 )
 
 from .models import PerfilUsuario
+from .seguridad import (
+    LimiteDeIntentos,
+    cerrar_todas_las_sesiones,
+    comprobar_bloqueo,
+    limpiar_fallos,
+    puede_pedir_recuperacion,
+    registrar_fallo,
+)
 from .serializers import (
     ActualizarPerfilSerializer,
     CambiarPasswordSerializer,
@@ -74,10 +89,11 @@ ERROR_401_TOKEN = error_401(
         error_400({"nombre": ["El nombre de usuario ya existe."], "password": ["Esta contraseña es demasiado común."]}),
     ),
 )
-class RegistroView(APIView):
+class RegistroView(LimiteDeIntentos, APIView):
     """POST /api/auth/registro/"""
 
     permission_classes = [AllowAny]
+    throttle_scope = "registro"
 
     def post(self, request):
         serializer = RegistroSerializer(data=request.data)
@@ -106,11 +122,25 @@ class RegistroView(APIView):
         ERROR_401_CREDENCIALES,
     ),
 )
-class LoginView(TokenObtainPairView):
+class LoginView(LimiteDeIntentos, TokenObtainPairView):
     """POST /api/auth/login/ -> access, refresh y datos del usuario."""
 
     permission_classes = [AllowAny]
     serializer_class = LoginSerializer
+    throttle_scope = "login"
+
+    def post(self, request, *args, **kwargs):
+        nombre = str(request.data.get("username", ""))[:150]
+        # Se comprueba ANTES de mirar la contrasena: una cuenta bloqueada no
+        # se puede seguir adivinando, ni siquiera acertando.
+        comprobar_bloqueo(nombre)
+        try:
+            respuesta = super().post(request, *args, **kwargs)
+        except AuthenticationFailed:
+            registrar_fallo(nombre)
+            raise
+        limpiar_fallos(nombre)
+        return respuesta
 
 
 @extend_schema(
@@ -226,7 +256,9 @@ class CambiarPasswordView(APIView):
             data=request.data, context={"request": request}
         )
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        usuario = serializer.save()
+        cerrar_todas_las_sesiones(usuario)
+        al_confirmar(avisar_password_cambiado, usuario, "cambio")
         return Response({"mensaje": "Contrasena actualizada. Vuelve a iniciar sesion."})
 
 
@@ -235,8 +267,11 @@ class CambiarPasswordView(APIView):
     summary="Solicitar recuperación de contraseña",
     auth=[],  # publico: sin candado en Swagger UI
     description="Paso 1. Siempre responde lo mismo, exista o no el correo (para no revelar "
-    "qué cuentas existen). Con `DEBUG=True` agrega `debug` con `uid` y `token` para probar "
-    "el paso 2 sin servidor de correo. Hoy no se envía ningún correo.",
+    "qué cuentas existen). Si el correo pertenece a una cuenta activa, le envía un correo con "
+    "un enlace de un solo uso (vence en 1 hora, `PASSWORD_RESET_TIMEOUT`) para que el dueño "
+    "confirme que fue él y elija la contraseña nueva. Límites: 10 por hora por IP y 3 correos "
+    "por hora por dirección. Con `DEBUG=True` agrega `debug` con `uid` y `token` para probar "
+    "sin servidor de correo.",
     request=SolicitarRecuperacionSerializer,
     responses=respuestas(
         ok(
@@ -257,26 +292,33 @@ class CambiarPasswordView(APIView):
         error_400({"correo": ["Introduzca una dirección de correo electrónico válida."]}),
     ),
 )
-class SolicitarRecuperacionView(APIView):
+class SolicitarRecuperacionView(LimiteDeIntentos, APIView):
     """
     POST /api/auth/recuperar/solicitar/
 
-    En produccion el token se enviaria por correo. En desarrollo (DEBUG=True) se
-    devuelve en la respuesta para poder probar el flujo completo sin SMTP.
+    Envia al correo un enlace de un solo uso. El dueno confirma que fue el quien
+    lo pidio al abrirlo; si no lo pidio, lo ignora y su contrasena no cambia.
+    En desarrollo (DEBUG=True) tambien devuelve uid y token para probar sin SMTP.
     """
 
     permission_classes = [AllowAny]
+    throttle_scope = "recuperar_solicitar"
 
     def post(self, request):
         serializer = SolicitarRecuperacionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        datos = serializer.generar_token()
-
         respuesta = {
             "mensaje": "Si el correo esta registrado, enviamos las instrucciones de recuperacion."
         }
-        if settings.DEBUG and datos:
-            respuesta["debug"] = datos
+        # Pasado el limite por correo se responde igual, pero no se envia nada:
+        # asi nadie puede llenar el buzon de otra persona.
+        if not puede_pedir_recuperacion(serializer.validated_data["correo"]):
+            return Response(respuesta)
+        cuentas = serializer.cuentas()
+        for cuenta in cuentas:
+            en_segundo_plano(enviar_recuperacion, cuenta["usuario"], cuenta["uid"], cuenta["token"])
+        if settings.DEBUG and cuentas:
+            respuesta["debug"] = {"uid": cuentas[0]["uid"], "token": cuentas[0]["token"]}
         return Response(respuesta)
 
 
@@ -292,13 +334,19 @@ class SolicitarRecuperacionView(APIView):
         error_400({"non_field_errors": ["El enlace de recuperacion no es valido."]}),
     ),
 )
-class ConfirmarRecuperacionView(APIView):
+class ConfirmarRecuperacionView(LimiteDeIntentos, APIView):
     """POST /api/auth/recuperar/confirmar/"""
 
     permission_classes = [AllowAny]
+    throttle_scope = "recuperar_confirmar"
 
     def post(self, request):
         serializer = ConfirmarRecuperacionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        usuario = serializer.save()
+        # Quien tenia la contrasena vieja (o una sesion robada) queda fuera, y
+        # el dueno puede entrar de inmediato aunque su cuenta estuviera bloqueada.
+        cerrar_todas_las_sesiones(usuario)
+        limpiar_fallos(usuario.username)
+        al_confirmar(avisar_password_cambiado, usuario, "recuperacion")
         return Response({"mensaje": "Contrasena restablecida. Ya puedes iniciar sesion."})

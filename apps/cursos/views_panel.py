@@ -1,6 +1,3 @@
-import uuid
-from pathlib import Path
-
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.db import transaction
@@ -54,13 +51,13 @@ from .permissions import (
     SoloLectura,
     exigir_curso_editable,
 )
+from .archivos import FORMATOS_GIF, nombre_seguro, validar_imagen
 from .procedimientos import marcar_opcion_correcta, reglas_como_error_400, usuario_auditoria
 from .serializers import (
     CursoPanelSerializer,
     OpcionPanelSerializer,
     PalabraPanelSerializer,
     PreguntaPanelSerializer,
-    FORMATOS_IMAGEN_PERMITIDOS,
     RecursoVisualSerializer,
 )
 
@@ -576,8 +573,12 @@ def subir_gif_palabra(request, pk):
             {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    try:
+        extension = validar_imagen(archivo, FORMATOS_GIF)
+    except serializers.ValidationError as error:
+        return Response({"detail": error.detail[0]}, status=status.HTTP_400_BAD_REQUEST)
 
-    ruta = default_storage.save(f"diccionario_gifs/{archivo.name}", archivo)
+    ruta = default_storage.save(f"diccionario_gifs/{nombre_seguro(extension)}", archivo)
     palabra.video_gif = default_storage.url(ruta)
     palabra.save(update_fields=["video_gif"])
     return Response(PalabraPanelSerializer(palabra).data)
@@ -612,8 +613,12 @@ def subir_gif_pregunta(request, pk):
             {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
             status=status.HTTP_400_BAD_REQUEST,
         )
+    try:
+        extension = validar_imagen(archivo, FORMATOS_GIF)
+    except serializers.ValidationError as error:
+        return Response({"detail": error.detail[0]}, status=status.HTTP_400_BAD_REQUEST)
 
-    ruta = default_storage.save(f"evaluacion_gifs/{archivo.name}", archivo)
+    ruta = default_storage.save(f"evaluacion_gifs/{nombre_seguro(extension)}", archivo)
     pregunta.video = default_storage.url(ruta)
     pregunta.save(update_fields=["video"])
     return Response(PreguntaPanelSerializer(pregunta).data)
@@ -650,18 +655,11 @@ def subir_archivo_contenido(request):
             {"detail": "Debes adjuntar el archivo en el campo 'archivo'."},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    extension = Path(archivo.name or "").suffix.lower()
-    if extension not in FORMATOS_IMAGEN_PERMITIDOS:
-        return Response(
-            {"detail": "Formato de imagen no permitido."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    if archivo.size > 10 * 1024 * 1024:
-        return Response(
-            {"detail": "El archivo no puede superar 10 MB."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+    try:
+        extension = validar_imagen(archivo)
+    except serializers.ValidationError as error:
+        return Response({"detail": error.detail[0]}, status=status.HTTP_400_BAD_REQUEST)
 
-    ruta = default_storage.save(f"contenido/{uuid.uuid4().hex}{extension}", archivo)
+    ruta = default_storage.save(f"contenido/{nombre_seguro(extension)}", archivo)
     url = f"/{default_storage.url(ruta).lstrip('/')}"
     return Response({"archivo_url": url}, status=status.HTTP_201_CREATED)

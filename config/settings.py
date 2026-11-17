@@ -128,6 +128,29 @@ REST_FRAMEWORK = {
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Limite de peticiones por IP en login, registro y recuperacion (ver
+    # docs/SEGURIDAD.md, seccion 8). Son generosos a proposito: un salon de
+    # clase entero puede salir a internet con una sola IP.
+    # Limite general para toda la API (las vistas de login, registro y
+    # recuperacion usan los suyos, mas estrictos). Es alto a proposito: solo
+    # frena scripts que abusan, nunca a una persona usando la pagina.
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": env("LIMITE_ANONIMO", default="300/min"),
+        "user": env("LIMITE_USUARIO", default="600/min"),
+        "login": env("LIMITE_LOGIN", default="30/min"),
+        "registro": env("LIMITE_REGISTRO", default="30/hour"),
+        "recuperar_solicitar": env("LIMITE_RECUPERAR_SOLICITAR", default="10/hour"),
+        "recuperar_confirmar": env("LIMITE_RECUPERAR_CONFIRMAR", default="20/hour"),
+    },
+    # Cuantos proxies hay delante de Django. 0 en desarrollo (se usa la IP de la
+    # conexion). En produccion 1: Tailscale Funnel agrega la IP real del cliente
+    # al final de X-Forwarded-For. Sin este valor, un atacante podria inventar
+    # esa cabecera para cambiar de "IP" en cada intento.
+    "NUM_PROXIES": env.int("NUM_PROXIES", default=0),
 }
 
 
@@ -189,6 +212,37 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
+}
+
+
+# ==========================================================
+# INICIO DE SESION, REGISTRO Y RECUPERACION
+# ==========================================================
+
+# Bloqueo por cuenta: tras LOGIN_MAX_FALLOS contrasenas incorrectas seguidas
+# para el mismo usuario, se rechaza el login durante LOGIN_BLOQUEO_MINUTOS
+# (contados desde el ultimo fallo), aunque la contrasena sea correcta.
+LOGIN_MAX_FALLOS = env.int("LOGIN_MAX_FALLOS", default=5)
+LOGIN_BLOQUEO_MINUTOS = env.int("LOGIN_BLOQUEO_MINUTOS", default=15)
+# Vigencia del enlace de recuperacion de contrasena, en segundos (1 hora).
+PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
+# Correos de recuperacion por direccion y por hora (evita llenar el buzon de
+# alguien pidiendo recuperaciones a su nombre).
+RECUPERAR_MAX_POR_CORREO = env.int("RECUPERAR_MAX_POR_CORREO", default=3)
+# El correo de recuperacion se envia en segundo plano: asi la respuesta tarda
+# lo mismo exista o no la cuenta, y nadie puede averiguar que correos estan
+# registrados midiendo el tiempo. Las pruebas lo ponen en False.
+CORREOS_EN_SEGUNDO_PLANO = env.bool("CORREOS_EN_SEGUNDO_PLANO", default=True)
+
+# Los contadores de intentos (DRF y bloqueo de login) viven en la cache. Debe
+# ser compartida entre los procesos de gunicorn: una cache en memoria daria a
+# cada proceso su propio contador. La tabla la crea la migracion
+# usuarios/0004_tabla_cache.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "cache_ensenarte",
+    }
 }
 
 

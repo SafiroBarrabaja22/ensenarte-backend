@@ -17,8 +17,9 @@ Navegador ──https──▶ GitHub Pages (frontend)
 
 > **El dominio `.ts.net`** sale de `tailscale status`: el nodo `cachyos-x8664` de la
 > tailnet `tailb93c3e`. Si se renombra la máquina o cambia de tailnet, hay que
-> actualizarlo en tres sitios: `js/config.js` del frontend (`BACKEND_PRODUCCION`) y
-> `ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS` del `.env`. Para confirmarlo, en la miniPC:
+> actualizarlo en cuatro sitios: `js/config.js` del frontend (`BACKEND_PRODUCCION`),
+> `scripts/aplicar_csp.py` del frontend (y correrlo), y `ALLOWED_HOSTS` y
+> `CSRF_TRUSTED_ORIGINS` del `.env`. Para confirmarlo, en la miniPC:
 > `tailscale status --json | grep -m1 '"DNSName"'`.
 
 Convenciones de esta guía:
@@ -113,14 +114,17 @@ CSRF_TRUSTED_ORIGINS=https://cachyos-x8664.tailb93c3e.ts.net
 CORS_ALLOWED_ORIGINS=https://safirobarrabaja22.github.io
 DATABASE_URL=mysql://<usuario_bd>:<clave_bd>@localhost:3306/proyecto_v2
 URL_FRONTEND=https://safirobarrabaja22.github.io/ensenarte-frontend
+# Funnel es 1 proxy delante de Django: el limite de intentos usa la IP real.
+NUM_PROXIES=1
 
-EMAIL_HOST=<servidor_smtp>
+# Correo con Gmail (ver 1.5.1)
+EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
-EMAIL_HOST_USER=<usuario_smtp>
-EMAIL_HOST_PASSWORD=<clave_smtp>
+EMAIL_HOST_USER=<cuenta>@gmail.com
+EMAIL_HOST_PASSWORD=<contraseña_de_aplicacion>
 EMAIL_USE_TLS=True
 EMAIL_USE_SSL=False
-DEFAULT_FROM_EMAIL=enSEÑArte <<correo_remitente>>
+DEFAULT_FROM_EMAIL=enSEÑArte <<cuenta>@gmail.com>
 ```
 
 Para generar la `SECRET_KEY` (cópiala en el `.env`, no la guardes en otro sitio):
@@ -135,6 +139,29 @@ Para generar la `SECRET_KEY` (cópiala en el `.env`, no la guardes en otro sitio
   servicio en `127.0.0.1:8000`.
 - `CORS_ALLOWED_ORIGINS` va **sin** `/ensenarte-frontend` y sin barra final. El
   backend no arranca si lleva ruta, `*` o `null`.
+
+### 1.5.1 Correo con Gmail (recuperación de contraseña y avisos)
+
+La recuperación de contraseña **solo funciona si el correo sale**: el enlace
+llega únicamente por correo. Con una cuenta de Gmail del equipo:
+
+1. Activa la **verificación en dos pasos** en esa cuenta de Google (Gmail no
+   deja usar SMTP con la contraseña normal).
+2. Entra a https://myaccount.google.com/apppasswords, crea una **contraseña de
+   aplicación** (nombre: "enSEÑArte") y copia los 16 caracteres **sin espacios**
+   en `EMAIL_HOST_PASSWORD`. No es la contraseña de la cuenta; si se filtra, se
+   revoca desde esa misma página sin tocar la cuenta.
+3. `DEFAULT_FROM_EMAIL` debe usar **la misma dirección** de `EMAIL_HOST_USER`:
+   Gmail reemplaza cualquier otro remitente.
+4. Prueba el envío (con el `.env` ya configurado):
+   ```bash
+   cd /srv/ensenarte/ensenarte-backend
+   sudo -u ensenarte -H .venv/bin/python manage.py sendtestemail <tu_correo>
+   ```
+   Si no llega, revisa la carpeta de spam y `journalctl -u ensenarte-backend`.
+
+Gmail permite unos 500 correos al día desde una cuenta personal, de sobra para
+el proyecto.
 
 ### 1.6 Primera puesta en marcha
 
@@ -255,6 +282,16 @@ gunzip -c /srv/ensenarte/respaldos/proyecto_v2-<fecha>.sql.gz | mysql -u <usuari
 sudo systemctl start ensenarte-backend
 ```
 
+### 1.10.1 Dependencias con vulnerabilidades
+
+- La CI corre `pip-audit` en cada push y falla si una dependencia (directa o
+  indirecta) tiene una vulnerabilidad conocida.
+- `.github/dependabot.yml` abre cada lunes un PR por cada versión nueva. Activa
+  además *Settings → Code security → Dependabot alerts* y *Dependabot security
+  updates* en GitHub.
+- Si un PR de Dependabot pasa la CI, se hace merge y se despliega con
+  `desplegar.sh`.
+
 ### 1.11 Operación diaria
 
 | Para | Comando |
@@ -271,7 +308,7 @@ sudo systemctl start ensenarte-backend
 
 ### 2.1 URL del backend
 
-Está en **un solo sitio**, [`js/config.js`](https://github.com/SafiroBarrabaja22/ensenarte-frontend/blob/main/js/config.js) del frontend:
+Está en [`js/config.js`](https://github.com/SafiroBarrabaja22/ensenarte-frontend/blob/main/js/config.js) del frontend:
 
 ```js
 BACKEND_PRODUCCION: "https://cachyos-x8664.tailb93c3e.ts.net",
@@ -283,6 +320,10 @@ usa `BACKEND_LOCAL`; en cualquier otro dominio (GitHub Pages) usa
 `BACKEND_PRODUCCION`. Así el mismo código sirve para desarrollar y para publicar
 sin tocar nada. Si cambias `config.js`, sube el número de `config.js?v=` en los
 HTML para que los navegadores no usen la versión en caché.
+
+El dominio también está autorizado en la política de seguridad (CSP) de las
+páginas. Si cambia, edita `BACKEND_PRODUCCION` en `scripts/aplicar_csp.py` y corre
+`python scripts/aplicar_csp.py`; si no, el navegador bloqueará las llamadas a la API.
 
 ### 2.2 Activar GitHub Pages
 
@@ -338,15 +379,16 @@ Django las lee de `/srv/ensenarte/ensenarte-backend/.env` (permisos 600, dueño
 | `CSRF_TRUSTED_ORIGINS` | **Sí** | `https://cachyos-x8664.tailb93c3e.ts.net` | Formularios con sesión: el login del admin de Django. Esquema y dominio, sin ruta. |
 | `CORS_ALLOWED_ORIGINS` | **Sí** | `https://safirobarrabaja22.github.io` | Orígenes que pueden llamar a la API desde el navegador. Sin ruta, sin barra final y sin `*`. |
 | `DATABASE_URL` | **Sí** | `mysql://<usuario_bd>:<clave_bd>@localhost:3306/proyecto_v2` | Conexión a MySQL por socket local. Caracteres especiales de la clave, codificados (ver 1.5). Si el socket no está en la ruta por defecto: agrega `?unix_socket=/ruta/mysqld.sock`. |
-| `URL_FRONTEND` | **Sí** | `https://safirobarrabaja22.github.io/ensenarte-frontend` | Enlaces de los correos (bienvenida, resultados). Con ruta y sin barra final. |
-| `EMAIL_HOST` | Para enviar correos | `<servidor_smtp>` | Servidor SMTP. Sin él los correos fallan; queda en el log y no afecta a la API. |
+| `URL_FRONTEND` | **Sí** | `https://safirobarrabaja22.github.io/ensenarte-frontend` | Enlaces de los correos (bienvenida, resultados y **el enlace de recuperación de contraseña**). Con ruta y sin barra final. |
+| `NUM_PROXIES` | **Sí** | `1` | Proxies delante de Django (Funnel). Con `1`, el límite de intentos de login usa la IP real del cliente; con `0` todos los usuarios parecerían venir de 127.0.0.1 y compartirían el límite. |
+| `EMAIL_HOST` | **Sí** (recuperación) | `smtp.gmail.com` | Servidor SMTP. Sin él los correos fallan (queda en el log): la API sigue funcionando, pero **nadie puede recuperar su contraseña**. |
 | `EMAIL_PORT` | No (587) | `587` | Puerto SMTP (465 si usas SSL). |
-| `EMAIL_HOST_USER` | Para enviar correos | `<usuario_smtp>` | Usuario SMTP. |
-| `EMAIL_HOST_PASSWORD` | Para enviar correos | `<clave_smtp>` | Clave SMTP (en Gmail, una "contraseña de aplicación"). |
+| `EMAIL_HOST_USER` | **Sí** (recuperación) | `<cuenta>@gmail.com` | Usuario SMTP. |
+| `EMAIL_HOST_PASSWORD` | **Sí** (recuperación) | `<contraseña_de_aplicacion>` | Contraseña de aplicación de Gmail (ver 1.5.1), no la de la cuenta. |
 | `EMAIL_USE_TLS` | No (`True`) | `True` | STARTTLS en el 587. |
 | `EMAIL_USE_SSL` | No (`False`) | `False` | SSL directo en el 465. No puede estar en `True` junto con `EMAIL_USE_TLS`. |
 | `EMAIL_TIMEOUT` | No (`10`) | `10` | Segundos máximos esperando al SMTP. |
-| `DEFAULT_FROM_EMAIL` | No | `enSEÑArte <<correo_remitente>>` | Remitente de los correos. |
+| `DEFAULT_FROM_EMAIL` | No | `enSEÑArte <<cuenta>@gmail.com>` | Remitente. Con Gmail, la misma dirección de `EMAIL_HOST_USER`. |
 | `EMAIL_BACKEND` | No | (sin definir) | Solo para forzar otro backend de correo. |
 | `JWT_ACCESO_MINUTOS` | No (`15`) | `15` | Vida del token de acceso. |
 | `JWT_REFRESCO_DIAS` | No (`7`) | `7` | Vida del token de refresco. |
@@ -354,6 +396,13 @@ Django las lee de `/srv/ensenarte/ensenarte-backend/.env` (permisos 600, dueño
 | `EVALUACION_CAMARA_UMBRAL_APROBACION` | No (`70`) | `70` | Porcentaje para aprobar la evaluación con cámara. |
 | `SERVIR_MEDIA` | No (`True`) | `True` | Django sirve `/media/` (fotos de perfil, biblioteca, gifs) con cabeceras que impiden ejecutar código subido. Ponlo en `False` solo si otro servidor sirve esa carpeta. |
 | `NIVEL_LOG` | No (`WARNING`) | `WARNING` | Nivel de los logs que van al journal (`INFO` para más detalle). |
+| `LOGIN_MAX_FALLOS` | No (`5`) | `5` | Contraseñas incorrectas seguidas antes de bloquear la cuenta. |
+| `LOGIN_BLOQUEO_MINUTOS` | No (`15`) | `15` | Duración del bloqueo de la cuenta. |
+| `PASSWORD_RESET_TIMEOUT` | No (`3600`) | `3600` | Vigencia del enlace de recuperación, en segundos. |
+| `RECUPERAR_MAX_POR_CORREO` | No (`3`) | `3` | Correos de recuperación por hora a la misma dirección. |
+| `LIMITE_LOGIN` / `LIMITE_REGISTRO` / `LIMITE_RECUPERAR_SOLICITAR` / `LIMITE_RECUPERAR_CONFIRMAR` | No | `30/min`, `30/hour`, `10/hour`, `20/hour` | Peticiones por IP. Ver docs/SEGURIDAD.md, sección 8. |
+| `LIMITE_ANONIMO` / `LIMITE_USUARIO` | No | `300/min`, `600/min` | Límite general de peticiones a toda la API, por IP (sin sesión) y por usuario. |
+| `CORREOS_EN_SEGUNDO_PLANO` | No (`True`) | `True` | Envía el correo de recuperación sin hacer esperar la respuesta. No lo cambies: evita que se pueda saber qué correos existen midiendo el tiempo. |
 
 **No** van en producción: `PRUEBAS_DATABASE_URL` y `BASES_PROTEGIDAS` (solo las
 usan las pruebas).

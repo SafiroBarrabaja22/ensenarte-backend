@@ -11,6 +11,7 @@ import itertools
 
 import pytest
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
 from PIL import Image
 from rest_framework.test import APIClient
@@ -26,6 +27,14 @@ from apps.usuarios.roles import (
 )
 
 CLAVE = "ClaveSegura123!"
+
+
+@pytest.fixture(autouse=True)
+def cache_limpia():
+    """Los limites de intentos y bloqueos de login viven en la cache: cada prueba empieza de cero."""
+    cache.clear()
+    yield
+    cache.clear()
 
 
 # ------------------------------------------------------------------ Clientes

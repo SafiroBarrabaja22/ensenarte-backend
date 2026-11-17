@@ -11,13 +11,13 @@ Versiones fijadas en [requirements.txt](requirements.txt):
 
 | Paquete | Versión |
 |---|---|
-| Django | 5.2.8 |
-| djangorestframework | 3.15.2 |
-| djangorestframework-simplejwt | 5.3.1 |
+| Django | 5.2.19 |
+| djangorestframework | 3.18.3 |
+| djangorestframework-simplejwt | 5.5.1 |
 | drf-spectacular | 0.30.0 |
 | django-cors-headers | 4.4.0 |
 | django-environ | 0.11.2 |
-| Pillow | 10.4.0 |
+| Pillow | 13.0.0 |
 | mysqlclient | 2.3.0 |
 | psycopg2-binary | 2.9.9 |
 | gunicorn | 22.0.0 |
@@ -29,6 +29,11 @@ Versiones fijadas en [requirements.txt](requirements.txt):
 > gunicorn 26.2.0. El README pide Python 3.11+. Antes de depender de una API
 > de Django/DRF, revisa contra qué versión se está ejecutando; no actualices
 > requirements.txt sin que el equipo lo decida.
+>
+> Django, DRF, simplejwt y Pillow se subieron el 17/11/2026 porque `pip-audit` encontró
+> vulnerabilidades conocidas en las versiones anteriores. La suite pasa con estas
+> versiones en Python 3.12 (igual que la CI). La CI corre `pip-audit` en cada push
+> y `.github/dependabot.yml` propone actualizaciones cada semana.
 
 - Base de datos: `DATABASE_URL` (django-environ). SQLite por defecto
   (`db.sqlite3`, ignorado en git); MySQL en producción (docs/DESPLIEGUE.md).
@@ -266,6 +271,26 @@ Explicación en lenguaje llano: [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
   `validar_origenes_cors` en `settings.py` detiene el arranque si hay `*`,
   `null`, ruta o barra final. `CORS_ALLOW_ALL_ORIGINS = False` y no hay regexes.
 - Pruebas: [apps/usuarios/tests_seguridad.py](apps/usuarios/tests_seguridad.py).
+- **Login, registro y recuperación** ([apps/usuarios/seguridad.py](apps/usuarios/seguridad.py),
+  docs/SEGURIDAD.md §8):
+  - límite por IP con `ScopedRateThrottle` (scopes `login`, `registro`, `recuperar_*`;
+    `NUM_PROXIES=1` en producción);
+  - bloqueo por cuenta tras `LOGIN_MAX_FALLOS` fallos, también para usuarios inexistentes;
+  - campo trampa `sitio_web` en el registro;
+  - recuperación por correo: enlace `recuperar.html#uid=&token=`, 1 hora, un solo uso,
+    enviado en segundo plano;
+  - restablecer o cambiar la contraseña cierra todas las sesiones y envía el aviso.
+
+  Los contadores viven en la caché de base de datos (`cache_ensenarte`, migración
+  `usuarios/0004`); las pruebas usan LocMem y `conftest.py` la limpia en cada prueba.
+  Las tasas de DRF se leen al importar: en pruebas se cambian con
+  `monkeypatch.setattr(ScopedRateThrottle, "THROTTLE_RATES", ...)`.
+- **Límite general:** `AnonRateThrottle` (300/min) y `UserRateThrottle` (600/min) para
+  toda la API. `settings_pruebas.py` los sube para que no interfieran en las pruebas.
+- **Subidas de archivos:** todas pasan por [apps/cursos/archivos.py](apps/cursos/archivos.py)
+  (`validar_imagen` + `nombre_seguro`): solo PNG/GIF/JPG/WEBP/BMP (gifs: solo GIF), tamaño
+  máximo, contenido verificado con Pillow y nombre UUID. Nunca guardes un archivo con el
+  nombre que manda el usuario.
 - El login devuelve también `usuario` (perfil + arreglo `roles`) para que el
   frontend decida a qué página redirigir. La autorización real es siempre la
   de este backend.
@@ -356,7 +381,8 @@ en SQLite (pruebas en local y en la CI) y PostgreSQL no ejecutan nada.
 ## Correos (apps/correos)
 
 - [apps/correos/servicio.py](apps/correos/servicio.py): `enviar_bienvenida`, `enviar_resultados`
-  y `avisar_curso_completado`. Todas llevan `@sin_romper`, que registra cualquier error en el
+  `avisar_curso_completado`, `enviar_recuperacion` (enlace de contraseña, se envía con `en_segundo_plano`)
+  y `avisar_password_cambiado`. Todas llevan `@sin_romper`, que registra cualquier error en el
   log y devuelve False. Se disparan con `al_confirmar(funcion, ...)`, es decir,
   `transaction.on_commit(robust=True)`, desde `RegistroView`, `_finalizar`/`_cerrar_intento`
   (cursos/views.py) y el serializer de cámara.

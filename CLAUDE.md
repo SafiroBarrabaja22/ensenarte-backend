@@ -20,7 +20,7 @@ Versiones fijadas en [requirements.txt](requirements.txt):
 | Pillow | 13.0.0 |
 | mysqlclient | 2.3.0 |
 | psycopg2-binary | 2.9.9 |
-| gunicorn | 22.0.0 |
+| gunicorn | 23.0.0 |
 | whitenoise | 6.9.0 |
 
 > **Ojo: el `.venv` local NO coincide con requirements.txt.** Hoy tiene
@@ -339,6 +339,18 @@ van a la salida estándar (journal). Actualizar: `sudo bash despliegue/desplegar
 Pruebas de esta configuración: [tests/test_despliegue.py](tests/test_despliegue.py).
 
 ## Integración continua
+
+La CI instala `requirements-ci.txt` (generado con `uv pip compile` desde `requirements-ci.in`):
+todas las dependencias con hash, solo ruedas precompiladas y sin `mysqlclient`.
+`scripts/verificar_requirements_ci.py` falla si no coincide con `requirements.txt` /
+`requirements-dev.txt`: **al cambiar una versión, regenera `requirements-ci.txt`** (comando en
+la cabecera de `requirements-ci.in`).
+
+SonarQube Cloud analiza `main`. Reglas que ya nos marcó y conviene no repetir:
+- Sin contraseñas escritas en el código, ni en pruebas: usa `secrets.token_urlsafe()`.
+- Nada de SQL armado con f-strings: ORM, `%s` o `cursor.callproc` (lista `PROCEDIMIENTOS`).
+- Las vistas Django sin DRF declaran métodos (`@require_safe`, `@require_POST`).
+- Los scripts no reciben rutas por argumento para escribir archivos.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) corre en cada push y PR (todas las ramas):
 Python 3.12, `check`, `makemigrations --check`, `pytest` (umbral 70 %) y sube `htmlcov/` como

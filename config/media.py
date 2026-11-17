@@ -17,11 +17,13 @@ impide salirse de MEDIA_ROOT con "../".
 
 from django.conf import settings
 from django.http import Http404
+from django.views.decorators.http import require_safe
 from django.views.static import serve
 
 POLITICA_MEDIA = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; sandbox"
 
 
+@require_safe   # solo GET y HEAD: /media/ es de lectura
 def servir_media(request, path):
     if not settings.SERVIR_MEDIA:
         raise Http404("La carpeta media no se sirve desde Django.")

@@ -68,13 +68,30 @@ def usuario_auditoria(usuario):
             cursor.execute("SET @ensenarte_usuario_id = NULL")
 
 
+# Unicos procedimientos que se pueden llamar (migracion cursos/0011).
+PROCEDIMIENTOS = frozenset({
+    "cerrar_intento_evaluacion",
+    "estadisticas_curso",
+    "ranking_estudiantes",
+    "clonar_curso",
+    "purgar_intentos_abandonados",
+    "marcar_opcion_correcta",
+})
+
+
 def _llamar(nombre, *parametros):
-    """CALL nombre(...) y devuelve la primera tabla de resultados como lista de dicts."""
+    """
+    CALL nombre(...) y devuelve la primera tabla de resultados como lista de dicts.
+
+    Se usa callproc (DB-API): el driver arma el CALL y envia cada parametro como
+    dato, sin formatear texto SQL. El nombre ademas tiene que estar en la lista.
+    """
+    if nombre not in PROCEDIMIENTOS:
+        raise ValueError(f"Procedimiento desconocido: {nombre!r}")
     if not es_mysql():
         raise ProcedimientoNoDisponible(f"{nombre} solo existe en MySQL.")
-    marcadores = ", ".join(["%s"] * len(parametros))
     with transaction.atomic(), connection.cursor() as cursor:
-        cursor.execute(f"CALL {nombre}({marcadores})", list(parametros))
+        cursor.callproc(nombre, list(parametros))
         filas = []
         if cursor.description:
             columnas = [columna[0] for columna in cursor.description]

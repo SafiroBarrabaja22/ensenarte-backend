@@ -8,6 +8,7 @@ devuelven una funcion para crear tantos objetos como haga falta.
 
 import io
 import itertools
+import secrets
 
 import pytest
 from django.contrib.auth.models import User
@@ -26,7 +27,8 @@ from apps.usuarios.roles import (
     asignar_rol,
 )
 
-CLAVE = "ClaveSegura123!"
+# Clave al azar en cada ejecucion: ninguna contrasena queda escrita en el codigo.
+CLAVE = secrets.token_urlsafe(12) + "Aa1!"
 
 
 @pytest.fixture(autouse=True)

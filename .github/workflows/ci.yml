@@ -57,30 +57,30 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-          cache-dependency-path: |
-            requirements.txt
-            requirements-dev.txt
+          cache-dependency-path: requirements-ci.txt
 
-      # mysqlclient esta en requirements.txt y se compila al instalarlo, aunque
-      # las pruebas no usen MySQL.
-      - name: Instalar librerias del sistema (mysqlclient se compila)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends pkg-config libmysqlclient-dev
+      - name: Verificar que requirements-ci.txt este al dia
+        # requirements-ci.txt fija TODAS las dependencias con su hash. Si alguien
+        # cambia requirements.txt o requirements-dev.txt y no lo regenera, falla.
+        run: python scripts/verificar_requirements_ci.py
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias (versiones exactas, con hash y sin compilar)
+        # --require-hashes: pip rechaza cualquier paquete cuyo contenido no
+        # coincida con el hash guardado (un paquete alterado no se instala).
+        # --only-binary :all:: solo ruedas precompiladas; no se ejecuta ningun
+        # setup.py durante la instalacion. mysqlclient no esta: no tiene rueda
+        # para Linux y la CI usa SQLite.
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --only-binary :all: --require-hashes -r requirements-ci.txt
 
       - name: Buscar vulnerabilidades conocidas en las dependencias
         # Revisa todo lo instalado (tambien las dependencias indirectas, como
-        # sqlparse o asgiref) contra la base de vulnerabilidades de PyPI (OSV).
-        # Falla si encuentra alguna: se arregla subiendo la version en
-        # requirements.txt (Dependabot abre esos PR cada semana).
+        # sqlparse o asgiref) y, aparte, requirements.txt completo (incluye
+        # mysqlclient). Falla si encuentra alguna: se arregla subiendo la version
+        # (Dependabot abre esos PR cada semana) y regenerando requirements-ci.txt.
         run: |
-          pip install pip-audit==2.10.1
           pip-audit --progress-spinner off --skip-editable
+          pip-audit --progress-spinner off -r requirements.txt --no-deps --disable-pip
 
       - name: Revisar la configuracion de Django
         run: python manage.py check

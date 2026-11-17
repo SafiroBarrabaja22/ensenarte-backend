@@ -290,6 +290,36 @@ Hay dos excepciones que sí se guardan en este backend, en `MEDIA_ROOT`
 
 ---
 
+## Pruebas y cobertura
+
+```bash
+pip install -r requirements-dev.txt   # pytest, pytest-django, pytest-cov
+pytest                                # corre todo y mide cobertura
+```
+
+- La suite usa **SQLite en memoria** (`config/settings_pruebas.py`), nunca la
+  base del `.env`. Los datos se crean con las fixtures de `tests/conftest.py`
+  (usuarios por rol, cursos con preguntas, imágenes en memoria).
+- El umbral es **70 %** (`--cov-fail-under=70` en `pytest.ini`). Si la cobertura
+  baja de ahí, `pytest` termina con error aunque todas las pruebas pasen.
+- El reporte HTML queda en `htmlcov/index.html`. `.coveragerc` excluye
+  migraciones, el entorno virtual, settings, `manage.py`, `wsgi.py`, `asgi.py`
+  y los propios archivos de prueba.
+- `python manage.py test apps` sigue funcionando (también con SQLite en
+  memoria), pero solo corre las pruebas de estilo `unittest` de `apps/`; las de
+  `tests/` son de pytest.
+
+| Archivo | Qué cubre |
+|---|---|
+| `tests/test_autenticacion.py` | Registro, login, JWT (ausente, expirado, mal formado, refresh, logout), perfil, contraseñas y recuperación |
+| `tests/test_cursos.py` | Catálogo, detalle, diccionario y progreso |
+| `tests/test_evaluacion.py` | Evaluación completa de principio a fin, reglas de puntaje, insignia 100 % y límites |
+| `tests/test_evaluacion_camara.py` | Sesión con cámara de punta a punta |
+| `tests/test_panel.py` | CRUD de cursos, preguntas, opciones y diccionario; quinta opción; gifs, archivos, biblioteca y reportes |
+| `tests/test_permisos.py` | Por cada rol, endpoints de otros roles a los que **no** puede entrar (403) |
+| `tests/test_comandos.py` | `poblar_datos`, `exportar_contenido`, `cargar_contenido`, `otorgar_insignias_curso_100` |
+| `apps/*/tests*.py` | Roles por objeto, JWT/CORS, documentación OpenAPI y cálculo de la evaluación con cámara |
+
 ## Pruebas rápidas con curl
 
 ```bash

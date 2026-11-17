@@ -1,0 +1,40 @@
+# Cobertura de la suite de pruebas (pytest-cov). Ver pytest.ini.
+#
+# Se mide solo el codigo propio (apps/ y config/). Se excluye lo que no tiene
+# logica que probar o que inflaria/desinflaria el porcentaje de forma
+# artificial: migraciones, entorno virtual, settings, puntos de entrada del
+# servidor y los propios archivos de prueba.
+
+[run]
+source =
+    apps
+    config
+branch = True
+omit =
+    */migrations/*
+    .venv/*
+    */.venv/*
+    venv/*
+    config/settings.py
+    config/settings_*.py
+    manage.py
+    config/wsgi.py
+    config/asgi.py
+    */tests.py
+    */tests_*.py
+    */test_*.py
+    */conftest.py
+    tests/*
+
+[report]
+fail_under = 70
+show_missing = True
+skip_covered = True
+precision = 1
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+
+[html]
+directory = htmlcov
+title = Cobertura del backend de enSEÑArte

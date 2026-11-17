@@ -1,63 +1,139 @@
-from rest_framework.permissions import BasePermission
+"""
+Permisos de DRF por rol.
 
-GRUPO_CREADOR = "CreadorDeCursos"
-GRUPO_PROFESOR = "Profesor"
-GRUPO_INTERPRETE = "Interprete"
+Hay una clase por rol (EsEstudiante, EsProfesor, EsInterprete,
+EsCreadorDeCursos, EsAdministrador) y, al final, las combinaciones que usan las
+vistas. Los nombres de los grupos vienen de apps/usuarios/roles.py.
 
+Alcance de cada rol:
+- Estudiante: catalogo, diccionario, evaluaciones y su progreso.
+- Profesor: lo anterior + crea cursos y administra el contenido SOLO de los
+  cursos que el creo (permiso a nivel de objeto).
+- Interprete: lo de Estudiante + biblioteca visual y gifs de cualquier curso.
+- CreadorDeCursos: lo de Estudiante + contenido de TODOS los cursos.
+- Administrador (grupo o superusuario): todo.
+"""
 
-class EsCreadorDeCursos(BasePermission):
-    """
-    Equivalente en DRF del decorador `permitir_creador` del monolito.
+from rest_framework.exceptions import PermissionDenied
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
-    Autoriza a superusuarios, staff y miembros del grupo CreadorDeCursos.
-    """
+from apps.usuarios.roles import (
+    ROL_ADMINISTRADOR,
+    ROL_CREADOR,
+    ROL_ESTUDIANTE,
+    ROL_INTERPRETE,
+    ROL_PROFESOR,
+    ROLES_GESTION_GLOBAL,
+    tiene_rol,
+)
 
-    message = "Necesitas permisos de creador de cursos para esta operacion."
+from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta
 
-    def has_permission(self, request, view):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        return bool(
-            user.is_superuser
-            or user.is_staff
-            or user.groups.filter(name=GRUPO_CREADOR).exists()
-        )
-
-
-class EsProfesor(BasePermission):
-    """
-    Rol de contenido: crea diccionarios (palabras + significado) y evaluaciones,
-    y puede consultar las estrellas de los estudiantes. No administra cursos.
-    """
-
-    message = "Necesitas permisos de profesor para esta operacion."
-
-    def has_permission(self, request, view):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        return bool(
-            user.is_superuser
-            or user.is_staff
-            or user.groups.filter(name=GRUPO_PROFESOR).exists()
-        )
+MENSAJE_CURSO_AJENO = "Solo puedes modificar los cursos que tu creaste."
 
 
-class EsInterprete(BasePermission):
-    """
-    Rol restringido a subir los gifs de las senas (diccionario y evaluaciones).
-    No puede crear ni editar el resto del contenido.
-    """
+class PermisoPorRol(BasePermission):
+    """Base: autoriza si el usuario autenticado pertenece al rol `rol`."""
 
-    message = "Necesitas permisos de interprete para esta operacion."
+    rol = None
 
     def has_permission(self, request, view):
-        user = request.user
-        if not user or not user.is_authenticated:
-            return False
-        return bool(
-            user.is_superuser
-            or user.is_staff
-            or user.groups.filter(name=GRUPO_INTERPRETE).exists()
-        )
+        return tiene_rol(request.user, self.rol)
+
+
+class EsEstudiante(PermisoPorRol):
+    rol = ROL_ESTUDIANTE
+    message = "Esta accion requiere el rol Estudiante."
+
+
+class EsProfesor(PermisoPorRol):
+    rol = ROL_PROFESOR
+    message = "Esta accion requiere el rol Profesor."
+
+
+class EsInterprete(PermisoPorRol):
+    rol = ROL_INTERPRETE
+    message = "Esta accion requiere el rol Interprete."
+
+
+class EsCreadorDeCursos(PermisoPorRol):
+    rol = ROL_CREADOR
+    message = "Esta accion requiere el rol Creador de cursos."
+
+
+class EsAdministrador(PermisoPorRol):
+    rol = ROL_ADMINISTRADOR
+    message = "Esta accion requiere el rol Administrador."
+
+
+class SoloLectura(BasePermission):
+    """Autoriza solo metodos de lectura (GET, HEAD, OPTIONS)."""
+
+    def has_permission(self, request, view):
+        return request.method in SAFE_METHODS
+
+
+# ----------------------------------------------------------------------
+# Permiso a nivel de objeto: dueno del curso
+# ----------------------------------------------------------------------
+
+def curso_de(objeto):
+    """Devuelve el Curso al que pertenece un Curso, Pregunta, Opcion o Palabra."""
+    if isinstance(objeto, Curso):
+        return objeto
+    if isinstance(objeto, (Pregunta, PalabraDiccionario)):
+        return objeto.curso
+    if isinstance(objeto, OpcionPregunta):
+        return objeto.pregunta.curso
+    return None
+
+
+def puede_editar_curso(usuario, curso):
+    """Administrador y CreadorDeCursos: cualquier curso. Profesor: solo los suyos."""
+    if tiene_rol(usuario, *ROLES_GESTION_GLOBAL):
+        return True
+    return (
+        curso is not None
+        and tiene_rol(usuario, ROL_PROFESOR)
+        and curso.creado_por_id == usuario.id
+    )
+
+
+def exigir_curso_editable(usuario, curso):
+    """Lanza 403 si el usuario no puede modificar el curso."""
+    if not puede_editar_curso(usuario, curso):
+        raise PermissionDenied(MENSAJE_CURSO_AJENO)
+
+
+class EsDuenoDelCurso(BasePermission):
+    """
+    Nivel de objeto. Se combina con PUEDE_GESTIONAR_CONTENIDO (que decide si
+    entra a la vista); aqui se decide si puede tocar ESTE curso o su contenido.
+    """
+
+    message = MENSAJE_CURSO_AJENO
+
+    def has_permission(self, request, view):
+        return True
+
+    def has_object_permission(self, request, view, obj):
+        return puede_editar_curso(request.user, curso_de(obj))
+
+
+# ----------------------------------------------------------------------
+# Combinaciones que usan las vistas
+# ----------------------------------------------------------------------
+
+# Cualquier rol puede estudiar (los profesores revisan sus cursos como alumnos).
+PUEDE_APRENDER = (
+    EsEstudiante | EsProfesor | EsInterprete | EsCreadorDeCursos | EsAdministrador
+)
+
+# Panel de cursos, preguntas, opciones y diccionario.
+PUEDE_GESTIONAR_CONTENIDO = EsProfesor | EsCreadorDeCursos | EsAdministrador
+
+# Escritura en la biblioteca visual (recursos, avatares e insignias).
+PUEDE_GESTIONAR_BIBLIOTECA = EsInterprete | EsAdministrador
+
+# Subir gifs de senas y archivos sueltos de contenido.
+PUEDE_SUBIR_GIF = EsInterprete | EsProfesor | EsCreadorDeCursos | EsAdministrador

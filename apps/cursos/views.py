@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.usuarios.models import PerfilUsuario
@@ -16,6 +16,7 @@ from .models import (
     Pregunta,
     ProgresoUsuario,
 )
+from .permissions import PUEDE_APRENDER
 from .serializers import (
     CursoSerializer,
     IntentoSerializer,
@@ -45,7 +46,7 @@ def detalle_curso(request, slug):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def diccionario_curso(request, slug):
     """GET /api/cursos/<slug>/diccionario/"""
     curso = get_object_or_404(Curso, nombre=slug, activo=True)
@@ -59,7 +60,7 @@ def diccionario_curso(request, slug):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def mi_progreso(request):
     """GET /api/progreso/ -> progreso del usuario en todos los cursos."""
     progresos = ProgresoUsuario.objects.filter(usuario=request.user).select_related(
@@ -99,7 +100,7 @@ def _intento_activo(user, curso):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def iniciar_evaluacion(request, slug):
     """POST /api/cursos/<slug>/evaluacion/iniciar/ -> crea un intento nuevo."""
     curso = get_object_or_404(Curso, nombre=slug, activo=True)
@@ -134,7 +135,7 @@ def iniciar_evaluacion(request, slug):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def evaluacion_actual(request, slug):
     """GET /api/cursos/<slug>/evaluacion/actual/ -> pregunta en curso."""
     curso = get_object_or_404(Curso, nombre=slug, activo=True)
@@ -189,7 +190,7 @@ def _cerrar_intento(intento):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def responder_evaluacion(request, slug):
     """
     POST /api/cursos/<slug>/evaluacion/responder/
@@ -312,7 +313,7 @@ def _resultado(intento, insignia_100_nueva=False):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def resultado_evaluacion(request, slug):
     """GET /api/cursos/<slug>/evaluacion/resultado/ -> ultimo intento cerrado."""
     curso = get_object_or_404(Curso, nombre=slug, activo=True)
@@ -332,7 +333,7 @@ def resultado_evaluacion(request, slug):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([PUEDE_APRENDER])
 def historial_evaluacion(request, slug):
     """GET /cursos/<slug>/evaluacion/historial/ -> intentos finalizados del usuario."""
     curso = get_object_or_404(Curso, nombre=slug, activo=True)

@@ -54,9 +54,7 @@ Público. Crea un usuario y su perfil.
     "avatar": "imgPredeterminadaUsuario.png",
     "foto_perfil_url": null,
     "estrellas": 0,
-    "es_creador": false,
-    "es_profesor": false,
-    "es_interprete": false
+    "roles": ["Estudiante"]
   }
 }
 ```
@@ -82,9 +80,7 @@ Público.
     "nombre": "carlos",
     "correo": "...",
     "estrellas": 2,
-    "es_creador": false,
-    "es_profesor": false,
-    "es_interprete": false
+    "roles": ["Estudiante"]
   }
 }
 ```
@@ -385,15 +381,17 @@ en el perfil.
 # 5. Panel administrativo
 >>>>>>> Stashed changes
 
-Todo bajo `/panel/` exige autenticación y, además, uno de estos grupos (o ser
-`staff`/superusuario, que siempre tienen acceso total). En caso contrario
-devuelve **403**.
+Todo bajo `/panel/` exige autenticación y un rol (grupo de Django). Sin el
+rol necesario devuelve **403** con `detail` explicando el motivo. La tabla
+completa de rol contra endpoint está en el README ("Roles y permisos").
 
-| Grupo | Endpoints permitidos |
+| Rol | Endpoints del panel |
 |---|---|
-| `CreadorDeCursos` | Todos, incluido `/panel/cursos/` |
-| `Profesor` | `/panel/preguntas/`, `/panel/opciones/`, `/panel/diccionario/`, `/panel/estudiantes/estrellas/`. No `/panel/cursos/` |
-| `Interprete` | Solo `POST /panel/diccionario/<id>/gif/` y `POST /panel/preguntas/<id>/gif/` |
+| `Administrador` (grupo o superusuario) | Todos |
+| `CreadorDeCursos` | Cursos, preguntas, opciones, diccionario, resumen, estrellas y gifs de **todos** los cursos. No escribe en la biblioteca |
+| `Profesor` | Lo mismo, pero solo modifica los cursos que **él creó** y su contenido. En los listados solo ve los suyos; abrir o editar uno ajeno devuelve 403 |
+| `Interprete` | Biblioteca (`/panel/recursos/`), gifs de preguntas y palabras de cualquier curso y `/panel/archivos/` |
+| `Estudiante` | Nada del panel, salvo leer avatares en `/panel/recursos/` |
 
 Las listas usan la paginación por defecto de DRF:
 
@@ -446,7 +444,7 @@ Campos: `curso` (id), `titulo`, `imagen_frontal`, `video_gif`.
 
 ## GET `/panel/estudiantes/estrellas/`
 
-Grupos `CreadorDeCursos` o `Profesor` (o `staff`/superusuario). Lista de
+Roles `Profesor`, `CreadorDeCursos` o `Administrador`. Lista de
 estudiantes ordenada por estrellas, de mayor a menor.
 
 ```json
@@ -458,8 +456,8 @@ estudiantes ordenada por estrellas, de mayor a menor.
 
 ## POST `/panel/diccionario/<id>/gif/`
 
-Grupos `Interprete`, `Profesor` o `CreadorDeCursos` (o `staff`/superusuario).
-Sube el gif de una palabra del diccionario. `multipart/form-data` con el
+Roles `Interprete`, `Profesor` (solo en sus cursos), `CreadorDeCursos` o
+`Administrador`. Sube el gif de una palabra del diccionario. `multipart/form-data` con el
 archivo en el campo `gif`.
 
 ```bash

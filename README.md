@@ -46,7 +46,7 @@ ensenarte-backend/
 │       │                   ProgresoUsuario, IntentoEvaluacion
 │       ├── views.py        Catálogo, diccionario y motor de evaluación
 │       ├── views_panel.py  CRUD administrativo (ViewSets)
-│       ├── permissions.py  EsCreadorDeCursos, EsProfesor, EsInterprete
+│       ├── permissions.py  Una clase de permiso por rol + combinaciones
 │       └── management/commands/poblar_datos.py
 ├── docs/
 │   ├── API.md              Contrato de todos los endpoints
@@ -90,7 +90,7 @@ python manage.py migrate
 
 # 6. Superusuario y datos de ejemplo
 python manage.py createsuperuser
-python manage.py poblar_datos
+python manage.py poblar_datos      # cursos de ejemplo + una cuenta demo por rol
 
 # 7. Levantar el servidor
 python manage.py runserver
@@ -150,22 +150,71 @@ El archivo `.env` está en `.gitignore` y **nunca** debe subirse al repositorio.
 
 ## Roles y permisos
 
-| Rol | Cómo se asigna | Puede |
+Los roles son grupos de Django. Los nombres están definidos una sola vez en
+`apps/usuarios/roles.py`, y los grupos los crea la migración
+`usuarios/0003_grupos_de_roles` al correr `migrate`: no hay que crearlos a mano
+ni correr ningún comando. Un usuario puede tener varios roles.
+
+| Rol (grupo) | Cómo se asigna | Puede |
 |---|---|---|
 | Visitante | Sin cuenta | Ver el catálogo de cursos |
-| Usuario | Se registra en `/api/auth/registro/` | Diccionario, evaluaciones, perfil |
-| Profesor | Grupo `Profesor` | CRUD de diccionario y evaluaciones (`preguntas`/`opciones`), ver `/api/panel/estudiantes/estrellas/`. No administra cursos |
-| Interprete | Grupo `Interprete` | Solo subir gifs: `POST /api/panel/diccionario/<id>/gif/` y `POST /api/panel/preguntas/<id>/gif/` |
-| Creador de cursos | Grupo `CreadorDeCursos`, o `is_staff` | Todo el CRUD de `/api/panel/`, incluidos cursos |
-| Superusuario | `createsuperuser` | Todo, incluido el admin de Django |
+| `Estudiante` | Automático al registrarse en `/api/auth/registro/` | Diccionario, evaluaciones (preguntas y cámara), progreso, perfil |
+| `Profesor` | Admin de Django → Usuarios → Grupos | Lo de Estudiante + crear cursos y administrar **solo los suyos** (preguntas, opciones, diccionario, gifs), resumen y estrellas |
+| `Interprete` | Admin de Django | Lo de Estudiante + biblioteca visual (recursos, avatares, insignias) y gifs de cualquier curso |
+| `CreadorDeCursos` | Admin de Django | Lo de Estudiante + administrar el contenido de **todos** los cursos |
+| `Administrador` | Admin de Django, o ser superusuario | Todo |
 
-Los tres grupos (`CreadorDeCursos`, `Profesor`, `Interprete`) se crean al
-ejecutar `poblar_datos`. No hay un registro especial por rol: el usuario se
-crea normal en `/api/auth/registro/` (o desde el admin) y luego alguien con
-acceso al admin de Django lo asigna al grupo correspondiente desde
-Usuarios → seleccionar → Grupos. El login es el mismo para todos los roles;
-lo único que cambia son los permisos, visibles en el perfil (`GET
-/api/auth/perfil/`) como `es_creador`, `es_profesor` y `es_interprete`.
+`is_staff` por sí solo ya no da ningún rol: solo permite entrar al admin de
+Django. La migración pasó a `Administrador` a los usuarios staff que ya
+existían, y a `Estudiante` a las cuentas que no tenían ningún rol.
+
+El perfil (`GET /api/auth/perfil/` y la respuesta del login) devuelve
+`"roles": ["Profesor", "Estudiante"]`. Un usuario autenticado sin ningún rol
+recibe **403** en todo, salvo su perfil y el cambio de contraseña.
+
+### Rol contra endpoint
+
+✅ permitido · ❌ denegado (403, o 401 sin sesión) · 🔸 solo en los cursos que él creó
+
+| Endpoint | Visitante | Estudiante | Profesor | Intérprete | Creador | Admin |
+|---|---|---|---|---|---|---|
+| `POST auth/registro/`, `auth/login/`, `auth/refresh/`, `auth/verify/`, `auth/recuperar/*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET/PATCH auth/perfil/`, `POST auth/cambiar-password/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET cursos/`, `GET cursos/<slug>/` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET cursos/<slug>/diccionario/`, `GET progreso/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `cursos/<slug>/evaluacion/*` (iniciar, actual, responder, resultado, historial) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET/POST evaluacion-camara/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET panel/resumen/`, `GET panel/estudiantes/estrellas/` | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ |
+| `GET panel/cursos/` (listado) | ❌ | ❌ | 🔸 | ❌ | ✅ | ✅ |
+| `POST panel/cursos/` | ❌ | ❌ | ✅ (queda como dueño) | ❌ | ✅ | ✅ |
+| `GET/PATCH/DELETE panel/cursos/<id>/` | ❌ | ❌ | 🔸 | ❌ | ✅ | ✅ |
+| CRUD `panel/preguntas/`, `panel/opciones/`, `panel/diccionario/` y `POST panel/diccionario/reordenar/` | ❌ | ❌ | 🔸 | ❌ | ✅ | ✅ |
+| `POST panel/diccionario/<id>/gif/`, `POST panel/preguntas/<id>/gif/` | ❌ | ❌ | 🔸 | ✅ | ✅ | ✅ |
+| `POST panel/archivos/` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| `GET panel/recursos/` (biblioteca) | ❌ | Solo avatares | ✅ | ✅ | ✅ | ✅ |
+| `POST/PATCH/DELETE panel/recursos/` (recursos, avatares, insignias) | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+
+### Cuentas de demostración
+
+`python manage.py poblar_datos` crea (o restablece) una cuenta por rol. Todas
+usan la misma contraseña: **`Ensenarte2026!`**
+
+| Usuario | Rol | Para mostrar |
+|---|---|---|
+| `admin_demo` | Administrador (además es superusuario y entra a `/admin/`) | Acceso total y asignación de roles |
+| `creador_demo` | CreadorDeCursos | Edita los cursos de cualquier profesor |
+| `profesor_demo` | Profesor | Crea un curso y lo administra |
+| `profesor2_demo` | Profesor | Intenta editar el curso de `profesor_demo` y recibe 403 |
+| `interprete_demo` | Interprete | Biblioteca visual y gifs |
+| `estudiante_demo` | Estudiante | Cursos y evaluaciones; si abre el panel, lo redirige |
+
+Los profesores demo no son dueños de los cursos que ya existen. Para mostrar
+el permiso por objeto: entra como `profesor_demo` y crea un curso desde el
+panel. Luego entra como `profesor2_demo`: ese curso no aparece en su listado y,
+si abre su URL, recibe "Permiso denegado".
+
+> Con `DEBUG=False` el comando **no** crea estas cuentas, porque tienen una
+> contraseña conocida. Para forzarlo: `python manage.py poblar_datos --usuarios-demo`.
 
 ---
 

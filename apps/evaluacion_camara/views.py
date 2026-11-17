@@ -1,5 +1,5 @@
 from rest_framework import generics
-from rest_framework.permissions import IsAuthenticated
+from apps.cursos.permissions import PUEDE_APRENDER
 
 from .models import EvaluacionCamara
 from .serializers import EvaluacionCamaraSerializer
@@ -15,7 +15,7 @@ class EvaluacionCamaraListCreateView(generics.ListCreateAPIView):
     """
 
     serializer_class = EvaluacionCamaraSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [PUEDE_APRENDER]
 
     def get_queryset(self):
         queryset = EvaluacionCamara.objects.filter(

@@ -15,7 +15,23 @@ from rest_framework.response import Response
 from apps.usuarios.models import PerfilUsuario
 
 from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta, RecursoVisual
-from .permissions import EsCreadorDeCursos, EsInterprete, EsProfesor
+from apps.usuarios.roles import (
+    ROL_ADMINISTRADOR,
+    ROL_CREADOR,
+    ROL_INTERPRETE,
+    ROL_PROFESOR,
+    ROLES_GESTION_GLOBAL,
+    tiene_rol,
+)
+
+from .permissions import (
+    PUEDE_GESTIONAR_BIBLIOTECA,
+    PUEDE_GESTIONAR_CONTENIDO,
+    PUEDE_SUBIR_GIF,
+    EsDuenoDelCurso,
+    SoloLectura,
+    exigir_curso_editable,
+)
 from .serializers import (
     CursoPanelSerializer,
     OpcionPanelSerializer,
@@ -25,19 +41,34 @@ from .serializers import (
     RecursoVisualSerializer,
 )
 
-# Creadores y profesores administran cursos y su contenido.
-PUEDE_GESTIONAR_CURSOS = EsCreadorDeCursos | EsProfesor
-PUEDE_GESTIONAR_CONTENIDO = PUEDE_GESTIONAR_CURSOS
-PUEDE_SUBIR_GIF = PUEDE_GESTIONAR_CONTENIDO | EsInterprete
+
+
+def _es_gestor_global(usuario):
+    return tiene_rol(usuario, *ROLES_GESTION_GLOBAL)
+
+
+def _solo_lo_propio(vista, queryset, campo_dueno):
+    """
+    En el listado, un Profesor solo ve el contenido de sus cursos. En detalle,
+    edicion y borrado no se filtra: EsDuenoDelCurso responde 403 si el curso
+    es de otro, en vez de un 404 que esconde el motivo.
+    """
+    usuario = vista.request.user
+    if vista.action == "list" and not _es_gestor_global(usuario):
+        return queryset.filter(**{campo_dueno: usuario})
+    return queryset
 
 
 class CursoViewSet(viewsets.ModelViewSet):
     """CRUD de cursos. /api/panel/cursos/"""
 
-    queryset = Curso.objects.all()
     serializer_class = CursoPanelSerializer
-    permission_classes = [PUEDE_GESTIONAR_CURSOS]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO, EsDuenoDelCurso]
 
+    def get_queryset(self):
+        return _solo_lo_propio(self, Curso.objects.all(), "creado_por")
+
+    # usuario_auditoria: los triggers curso_auditoria_* registran quien hizo el cambio.
     def perform_create(self, serializer):
         serializer.save(creado_por=self.request.user)
 
@@ -46,7 +77,7 @@ class PreguntaViewSet(viewsets.ModelViewSet):
     """CRUD de preguntas. Filtra con ?curso=<id>."""
 
     serializer_class = PreguntaPanelSerializer
-    permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO, EsDuenoDelCurso]
     # Sin paginar: el panel muestra y cuenta todas las preguntas del curso.
     pagination_class = None
 
@@ -55,27 +86,40 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         curso_id = self.request.query_params.get("curso")
         if curso_id:
             queryset = queryset.filter(curso_id=curso_id)
-        return queryset
+        return _solo_lo_propio(self, queryset, "curso__creado_por")
+
+    def perform_create(self, serializer):
+        exigir_curso_editable(self.request.user, serializer.validated_data["curso"])
+        serializer.save()
+
+    def perform_update(self, serializer):
+        curso = serializer.validated_data.get("curso", serializer.instance.curso)
+        exigir_curso_editable(self.request.user, curso)
+        serializer.save()
 
 
 class OpcionViewSet(viewsets.ModelViewSet):
     """CRUD de opciones. Filtra con ?pregunta=<id>."""
 
     serializer_class = OpcionPanelSerializer
-    permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO, EsDuenoDelCurso]
 
     def get_queryset(self):
-        queryset = OpcionPregunta.objects.select_related("pregunta")
+        queryset = OpcionPregunta.objects.select_related("pregunta__curso")
         pregunta_id = self.request.query_params.get("pregunta")
         if pregunta_id:
             queryset = queryset.filter(pregunta_id=pregunta_id)
-        return queryset
+        return _solo_lo_propio(self, queryset, "pregunta__curso__creado_por")
 
     def perform_create(self, serializer):
+        pregunta = serializer.validated_data["pregunta"]
+        exigir_curso_editable(self.request.user, pregunta.curso)
         opcion = serializer.save()
         self._forzar_unica_correcta(opcion)
 
     def perform_update(self, serializer):
+        pregunta = serializer.validated_data.get("pregunta", serializer.instance.pregunta)
+        exigir_curso_editable(self.request.user, pregunta.curso)
         opcion = serializer.save()
         self._forzar_unica_correcta(opcion)
 
@@ -92,7 +136,7 @@ class PalabraViewSet(viewsets.ModelViewSet):
     """CRUD del diccionario. Filtra con ?curso=<id>."""
 
     serializer_class = PalabraPanelSerializer
-    permission_classes = [PUEDE_GESTIONAR_CONTENIDO]
+    permission_classes = [PUEDE_GESTIONAR_CONTENIDO, EsDuenoDelCurso]
     # Sin paginar: para reordenar hace falta la lista completa del curso.
     pagination_class = None
 
@@ -101,11 +145,17 @@ class PalabraViewSet(viewsets.ModelViewSet):
         curso_id = self.request.query_params.get("curso")
         if curso_id:
             queryset = queryset.filter(curso_id=curso_id)
-        return queryset
+        return _solo_lo_propio(self, queryset, "curso__creado_por")
+
+    def perform_update(self, serializer):
+        curso = serializer.validated_data.get("curso", serializer.instance.curso)
+        exigir_curso_editable(self.request.user, curso)
+        serializer.save()
 
     def perform_create(self, serializer):
         """Las palabras nuevas quedan al final del diccionario."""
         curso = serializer.validated_data["curso"]
+        exigir_curso_editable(self.request.user, curso)
         ultimo = PalabraDiccionario.objects.filter(curso=curso).aggregate(
             maximo=Max("orden")
         )["maximo"]
@@ -121,6 +171,7 @@ class PalabraViewSet(viewsets.ModelViewSet):
                 {"detail": "Debes enviar 'curso' y la lista 'ids'."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        exigir_curso_editable(request.user, get_object_or_404(Curso, pk=curso_id))
         palabras = {
             palabra.id: palabra
             for palabra in PalabraDiccionario.objects.filter(curso_id=curso_id)
@@ -144,8 +195,17 @@ class PalabraViewSet(viewsets.ModelViewSet):
 
 
 class RecursoVisualViewSet(viewsets.ModelViewSet):
+    """
+    Biblioteca visual (recursos, avatares e insignias). /api/panel/recursos/
+
+    Leer: cualquier usuario autenticado (sin rol de contenido solo ve avatares,
+    que necesita para editar su perfil). Crear, editar y borrar: Interprete o
+    Administrador.
+    """
+
     queryset = RecursoVisual.objects.all()
     serializer_class = RecursoVisualSerializer
+    permission_classes = [IsAuthenticated & (SoloLectura | PUEDE_GESTIONAR_BIBLIOTECA)]
     parser_classes = (JSONParser, MultiPartParser, FormParser)
 
     def paginate_queryset(self, queryset):
@@ -163,12 +223,8 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         extension = self.request.query_params.get("extension", "").lower()
         categoria = self.request.query_params.get("categoria", "").lower()
         usuario = self.request.user
-        puede_ver_todo = bool(
-            usuario.is_superuser
-            or usuario.is_staff
-            or usuario.groups.filter(
-                name__in=("CreadorDeCursos", "Profesor", "Interprete")
-            ).exists()
+        puede_ver_todo = tiene_rol(
+            usuario, ROL_ADMINISTRADOR, ROL_CREADOR, ROL_PROFESOR, ROL_INTERPRETE
         )
         if not puede_ver_todo:
             queryset = queryset.filter(categoria=RecursoVisual.Categoria.AVATAR)
@@ -179,12 +235,6 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         if extension:
             queryset = queryset.filter(archivo__iendswith=f".{extension}")
         return queryset
-
-    def get_permissions(self):
-        if self.action in ("list", "retrieve"):
-            return [IsAuthenticated()]
-        else:
-            return [EsInterprete()]
 
     def perform_create(self, serializer):
         serializer.save(subido_por=self.request.user)
@@ -217,7 +267,7 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
 
 
 @api_view(["GET"])
-@permission_classes([PUEDE_GESTIONAR_CURSOS])
+@permission_classes([PUEDE_GESTIONAR_CONTENIDO])
 def resumen_panel(request):
     """GET /api/panel/resumen/ -> cifras del dashboard."""
     return Response(
@@ -252,6 +302,9 @@ def estrellas_estudiantes(request):
 def subir_gif_palabra(request, pk):
     """POST /api/panel/diccionario/<pk>/gif/ -> sube el gif de una palabra."""
     palabra = get_object_or_404(PalabraDiccionario, pk=pk)
+    # El Interprete sube gifs a cualquier curso; un Profesor solo a los suyos.
+    if not tiene_rol(request.user, ROL_INTERPRETE):
+        exigir_curso_editable(request.user, palabra.curso)
     archivo = request.FILES.get("gif")
     if not archivo:
         return Response(
@@ -270,6 +323,9 @@ def subir_gif_palabra(request, pk):
 def subir_gif_pregunta(request, pk):
     """POST /api/panel/preguntas/<pk>/gif/ -> sube el gif de una pregunta."""
     pregunta = get_object_or_404(Pregunta, pk=pk)
+    # El Interprete sube gifs a cualquier curso; un Profesor solo a los suyos.
+    if not tiene_rol(request.user, ROL_INTERPRETE):
+        exigir_curso_editable(request.user, pregunta.curso)
     archivo = request.FILES.get("gif")
     if not archivo:
         return Response(

@@ -9,6 +9,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from apps.cursos.models import RecursoVisual
 
 from .models import PerfilUsuario
+from .roles import ROL_ESTUDIANTE, asignar_rol, roles_de
 
 AVATARES_ANTERIORES = {
     "imgPredeterminadaUsuario.png",
@@ -26,9 +27,7 @@ class PerfilSerializer(serializers.ModelSerializer):
     nombre = serializers.CharField(source="user.username", read_only=True)
     correo = serializers.EmailField(source="user.email", read_only=True)
     foto_perfil_url = serializers.SerializerMethodField()
-    es_creador = serializers.SerializerMethodField()
-    es_profesor = serializers.SerializerMethodField()
-    es_interprete = serializers.SerializerMethodField()
+    roles = serializers.SerializerMethodField()
 
     class Meta:
         model = PerfilUsuario
@@ -39,9 +38,7 @@ class PerfilSerializer(serializers.ModelSerializer):
             "foto_perfil",
             "foto_perfil_url",
             "estrellas",
-            "es_creador",
-            "es_profesor",
-            "es_interprete",
+            "roles",
         )
         read_only_fields = ("estrellas",)
         extra_kwargs = {"foto_perfil": {"write_only": True, "required": False}}
@@ -53,29 +50,9 @@ class PerfilSerializer(serializers.ModelSerializer):
         url = obj.foto_perfil.url
         return request.build_absolute_uri(url) if request else url
 
-    def get_es_creador(self, obj):
-        user = obj.user
-        return bool(
-            user.is_superuser
-            or user.is_staff
-            or user.groups.filter(name="CreadorDeCursos").exists()
-        )
-
-    def get_es_profesor(self, obj):
-        user = obj.user
-        return bool(
-            user.is_superuser
-            or user.is_staff
-            or user.groups.filter(name="Profesor").exists()
-        )
-
-    def get_es_interprete(self, obj):
-        user = obj.user
-        return bool(
-            user.is_superuser
-            or user.is_staff
-            or user.groups.filter(name="Interprete").exists()
-        )
+    def get_roles(self, obj):
+        """Roles del usuario, p. ej. ["Profesor", "Estudiante"]. Ver usuarios/roles.py."""
+        return roles_de(obj.user)
 
 
 class RegistroSerializer(serializers.Serializer):
@@ -100,11 +77,15 @@ class RegistroSerializer(serializers.Serializer):
         return value
 
     def create(self, validated_data):
-        return User.objects.create_user(
+        usuario = User.objects.create_user(
             username=validated_data["nombre"],
             email=validated_data["correo"],
             password=validated_data["password"],
         )
+        # El registro publico siempre crea estudiantes; los demas roles los
+        # asigna un Administrador desde el admin de Django.
+        asignar_rol(usuario, ROL_ESTUDIANTE)
+        return usuario
 
 
 class LoginSerializer(TokenObtainPairSerializer):

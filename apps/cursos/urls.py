@@ -1,9 +1,11 @@
 from django.urls import include, path
-from rest_framework.routers import DefaultRouter
+from rest_framework.routers import SimpleRouter
 
 from . import views, views_panel
 
-router = DefaultRouter()
+# SimpleRouter: sin la vista raiz navegable de DefaultRouter, que quedaria
+# con el permiso por defecto en vez de uno explicito.
+router = SimpleRouter()
 router.register("cursos", views_panel.CursoViewSet, basename="panel-cursos")
 router.register("preguntas", views_panel.PreguntaViewSet, basename="panel-preguntas")
 router.register("opciones", views_panel.OpcionViewSet, basename="panel-opciones")

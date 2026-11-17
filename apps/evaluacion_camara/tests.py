@@ -5,6 +5,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from apps.cursos.models import Curso, ProgresoUsuario, RecursoVisual
+from apps.usuarios.roles import ROL_ESTUDIANTE, asignar_rol
 
 from .models import EvaluacionCamara, IntentoCamara
 
@@ -30,6 +31,8 @@ class EvaluacionCamaraTests(APITestCase):
     def setUp(self):
         self.usuario = User.objects.create_user("ana", password="ClaveSegura123")
         self.otro = User.objects.create_user("beto", password="ClaveSegura123")
+        asignar_rol(self.usuario, ROL_ESTUDIANTE)
+        asignar_rol(self.otro, ROL_ESTUDIANTE)
         self.curso = Curso.objects.create(
             nombre="abecedario",
             titulo="Abecedario",
@@ -167,6 +170,13 @@ class EvaluacionCamaraTests(APITestCase):
         )
         self.assertEqual(
             self.client.get(URL).status_code, status.HTTP_401_UNAUTHORIZED
+        )
+
+    def test_usuario_sin_rol_recibe_403(self):
+        sin_rol = User.objects.create_user("sinrol", password="ClaveSegura123")
+        self.client.force_authenticate(sin_rol)
+        self.assertEqual(
+            self.enviar(intentos(7, 10)).status_code, status.HTTP_403_FORBIDDEN
         )
 
     def test_historial_solo_del_usuario_y_mas_reciente_primero(self):

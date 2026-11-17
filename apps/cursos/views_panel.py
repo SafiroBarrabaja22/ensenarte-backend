@@ -54,6 +54,7 @@ from .permissions import (
     SoloLectura,
     exigir_curso_editable,
 )
+from .procedimientos import marcar_opcion_correcta, reglas_como_error_400, usuario_auditoria
 from .serializers import (
     CursoPanelSerializer,
     OpcionPanelSerializer,
@@ -190,7 +191,16 @@ class CursoViewSet(viewsets.ModelViewSet):
 
     # usuario_auditoria: los triggers curso_auditoria_* registran quien hizo el cambio.
     def perform_create(self, serializer):
-        serializer.save(creado_por=self.request.user)
+        with usuario_auditoria(self.request.user):
+            serializer.save(creado_por=self.request.user)
+
+    def perform_update(self, serializer):
+        with usuario_auditoria(self.request.user):
+            serializer.save()
+
+    def perform_destroy(self, instance):
+        with usuario_auditoria(self.request.user):
+            instance.delete()
 
 
 @extend_schema_view(**_doc_crud(
@@ -244,22 +254,25 @@ class OpcionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         pregunta = serializer.validated_data["pregunta"]
         exigir_curso_editable(self.request.user, pregunta.curso)
-        opcion = serializer.save()
-        self._forzar_unica_correcta(opcion)
+        self._guardar(serializer)
 
     def perform_update(self, serializer):
         pregunta = serializer.validated_data.get("pregunta", serializer.instance.pregunta)
         exigir_curso_editable(self.request.user, pregunta.curso)
-        opcion = serializer.save()
-        self._forzar_unica_correcta(opcion)
+        self._guardar(serializer)
 
     @staticmethod
-    def _forzar_unica_correcta(opcion):
-        """Solo una opcion por pregunta puede ser la correcta."""
-        if opcion.es_correcta:
-            OpcionPregunta.objects.filter(pregunta=opcion.pregunta).exclude(
-                pk=opcion.pk
-            ).update(es_correcta=False)
+    def _guardar(serializer):
+        """
+        Solo una opcion por pregunta puede ser la correcta. En MySQL un trigger
+        rechaza dos correctas a la vez, asi que la opcion se guarda como no
+        correcta y luego marcar_opcion_correcta desmarca las demas y la marca.
+        """
+        marcar = serializer.validated_data.get("es_correcta") is True
+        with transaction.atomic(), reglas_como_error_400():
+            opcion = serializer.save(es_correcta=False) if marcar else serializer.save()
+            if marcar:
+                marcar_opcion_correcta(opcion)
 
 
 @extend_schema_view(**_doc_crud(

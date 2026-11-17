@@ -353,6 +353,49 @@ Si falta alguno, el primer paso del workflow falla y dice cuál. GitHub no
 entrega secrets a los pull requests que vienen de *forks*, así que en esos PR
 la CI falla en ese primer paso.
 
+### Pruebas de las reglas en MySQL
+
+Los triggers y procedimientos (migraciones `cursos/0011` y `0012`) solo existen
+en MySQL. Sus pruebas se saltan en SQLite y en la CI. Para correrlas contra el
+servidor MySQL de pruebas:
+
+```bash
+# PowerShell: $env:PRUEBAS_DATABASE_URL = "mysql://usuario:clave@host:3306/proyecto_pruebas"
+PRUEBAS_DATABASE_URL="mysql://usuario:clave@host:3306/proyecto_pruebas" pytest
+```
+
+Django crea `test_proyecto_pruebas`, le aplica todas las migraciones, corre la
+suite y la borra; `proyecto_pruebas` no se toca. Nunca uses `proyecto_v2`.
+
+---
+
+## Reglas de negocio en la base de datos (MySQL)
+
+Además de la API, la base de datos impide romper estas reglas aunque el cambio
+venga del admin de Django, de un script o de una consulta SQL directa:
+
+| Trigger | Regla |
+|---|---|
+| `opcion_una_correcta_*` | Una pregunta tiene una sola opción correcta (para cambiarla: `CALL marcar_opcion_correcta(id)`) |
+| `opcion_maximo_*` | Una pregunta admite como máximo 4 opciones |
+| `curso_auditoria_*` | Toda alta, cambio y baja de cursos queda en `cursos_auditoriacurso` (visible en el admin, solo lectura) |
+| `progreso_estrellas_*` | Las estrellas del perfil son la cantidad de cursos completados |
+| `intento_finalizado_inmutable` | Un intento terminado no admite más respuestas |
+
+| Procedimiento | Qué hace |
+|---|---|
+| `cerrar_intento_evaluacion(id)` | Consolida el intento en el progreso, la insignia del 100 % y las estrellas |
+| `estadisticas_curso(id, umbral)` | Promedios de aciertos y errores, estudiantes que completaron y tasa de aprobación |
+| `ranking_estudiantes(n)` | Los n primeros estudiantes por cursos completados y aciertos |
+| `clonar_curso(id, slug, usuario)` | Copia preguntas, opciones y palabras bajo un slug nuevo, con los mismos recursos; el clon queda inactivo |
+| `purgar_intentos_abandonados(dias)` | Borra intentos sin terminar y sesiones de cámara incompletas de más de N días |
+| `marcar_opcion_correcta(id)` | Deja una opción como la única correcta de su pregunta |
+
+Si una regla se viola, MySQL responde con `SIGNAL SQLSTATE '45000'` y un
+mensaje en español. Desde Python se usan con `apps/cursos/procedimientos.py`.
+
+---
+
 ## Pruebas rápidas con curl
 
 ```bash

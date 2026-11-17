@@ -19,6 +19,7 @@ FORMATOS_IMAGEN_PERMITIDOS = {
 }
 
 from .models import (
+    MAXIMO_OPCIONES_POR_PREGUNTA,
     Curso,
     IntentoEvaluacion,
     OpcionPregunta,
@@ -293,9 +294,9 @@ class OpcionPanelSerializer(serializers.ModelSerializer):
         existentes = OpcionPregunta.objects.filter(pregunta=pregunta)
         if self.instance:
             existentes = existentes.exclude(pk=self.instance.pk)
-        if existentes.count() >= 4:
+        if existentes.count() >= MAXIMO_OPCIONES_POR_PREGUNTA:
             raise serializers.ValidationError(
-                "Una pregunta admite como maximo 4 opciones."
+                f"Una pregunta admite como maximo {MAXIMO_OPCIONES_POR_PREGUNTA} opciones."
             )
         return attrs
 

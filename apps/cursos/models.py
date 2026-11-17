@@ -5,6 +5,10 @@ from django.contrib.auth.models import User
 from django.db import models
 from django.utils import timezone
 
+# Regla de negocio: una pregunta tiene como maximo este numero de opciones.
+# La aplican el serializer del panel y el trigger opcion_maximo_* (migracion 0012).
+MAXIMO_OPCIONES_POR_PREGUNTA = 4
+
 
 def ruta_recurso_visual(instance, filename):
     extension = Path(filename).suffix.lower()
@@ -232,3 +236,46 @@ class IntentoEvaluacion(models.Model):
         if self.errores <= 30:
             return "La practica hace al maestro."
         return "Echale un vistazo al diccionario."
+
+
+class AuditoriaCurso(models.Model):
+    """
+    Bitacora de altas, cambios y bajas de cursos.
+
+    La escriben SOLO los triggers curso_auditoria_* de MySQL (migracion 0012),
+    no el codigo Python: asi queda registro aunque el cambio venga del admin, de
+    un script o de una consulta directa a la base.
+    """
+
+    class Operacion(models.TextChoices):
+        ALTA = "alta", "Alta"
+        CAMBIO = "cambio", "Cambio"
+        BAJA = "baja", "Baja"
+
+    # Sin llave foranea: el registro debe sobrevivir al borrado del curso.
+    curso_id = models.BigIntegerField(db_index=True)
+    operacion = models.CharField(max_length=6, choices=Operacion.choices)
+    usuario = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        db_constraint=False,  # el trigger escribe el id tal cual; el usuario puede borrarse luego
+        related_name="auditorias_curso",
+        help_text="Usuario de la aplicacion (variable @ensenarte_usuario_id o creado_por).",
+    )
+    usuario_bd = models.CharField(
+        max_length=300, blank=True, default="",
+        help_text="Usuario de MySQL que ejecuto el cambio (USER()).",
+    )
+    fecha = models.DateTimeField()
+    valores_anteriores = models.JSONField(null=True, blank=True)
+    valores_nuevos = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ("-fecha", "-id")
+        verbose_name = "Auditoria de curso"
+        verbose_name_plural = "Auditoria de cursos"
+
+    def __str__(self):
+        return f"{self.get_operacion_display()} del curso {self.curso_id} ({self.fecha:%Y-%m-%d %H:%M})"

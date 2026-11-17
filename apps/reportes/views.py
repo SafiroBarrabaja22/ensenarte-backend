@@ -35,7 +35,7 @@ from config.openapi import (
     respuestas,
 )
 
-from . import datos, excel, pdf
+from . import datos, excel, historial, pdf
 
 TIPO_PDF = "application/pdf"
 TIPO_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -162,3 +162,45 @@ def plataforma(request):
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
     return _archivo(reporte, formato)
+
+
+# ------------------------------------------------------------------ 4. Historial de intentos
+
+
+PARAM_TIPO_HISTORIAL = OpenApiParameter(
+    "tipo", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False,
+    enum=sorted(historial.TIPOS), default="preguntas",
+    description="`preguntas` (evaluación por preguntas, por defecto) o `camara` (evaluación con cámara).",
+)
+
+
+@extend_schema(
+    tags=[ETIQUETA_REPORTES],
+    summary="Historial de intentos de una evaluación (PDF)",
+    description="PDF con las últimas 5 sesiones **del usuario autenticado** en la evaluación del "
+    "curso, con el mismo diseño de la tarjeta \"Tu progreso\" de la página: anillo con la "
+    "última sesión, comparación con la anterior, gráfica \"Tus últimos intentos\", tarjetas "
+    "por sesión y tabla de detalle. Nunca incluye datos de otros usuarios. Cualquier rol con "
+    "acceso a cursos." + NOTA_DESCARGA,
+    parameters=[PARAM_SLUG, PARAM_TIPO_HISTORIAL],
+    responses=respuestas(
+        {(200, TIPO_PDF): OpenApiResponse(OpenApiTypes.BINARY, description="Historial en PDF.")},
+        error_400({"detail": "Tipo no válido. Usa tipo=preguntas o tipo=camara."}, detalle=True,
+                  descripcion="`tipo` no es `preguntas` ni `camara`."),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+        error_404("El curso no existe o no está activo."),
+    ),
+)
+@api_view(["GET"])
+@permission_classes([PUEDE_APRENDER])
+def historial_intentos(request, slug):
+    tipo = request.query_params.get("tipo", "preguntas").lower()
+    if tipo not in historial.TIPOS:
+        return Response({"detail": "Tipo no válido. Usa tipo=preguntas o tipo=camara."},
+                        status=status.HTTP_400_BAD_REQUEST)
+    contenido, nombre = historial.construir(request.user, slug, tipo)
+    respuesta = HttpResponse(contenido, content_type=TIPO_PDF)
+    respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'
+    respuesta["Cache-Control"] = "no-store"
+    return respuesta

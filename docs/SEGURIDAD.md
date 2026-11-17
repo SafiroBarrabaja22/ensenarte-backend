@@ -318,10 +318,11 @@ Cómo se protege:
 
 | Riesgo | Protección |
 |---|---|
-| Averiguar qué correos están registrados | Siempre la misma respuesta. El correo sale en segundo plano, así que la respuesta tampoco tarda más cuando la cuenta existe |
+| Averiguar qué correos están registrados | Siempre la misma respuesta. El correo sale en segundo plano, así que la respuesta tampoco tarda más cuando la cuenta existe. Si el correo no tiene cuenta, recibe el aviso "No encontramos una cuenta con este correo": siempre llega un correo, pero solo lo ve el dueño del buzón |
+| Saltarse el correo | El enlace nunca va en la respuesta de la API, tampoco en desarrollo: solo se puede restablecer desde el buzón |
 | Robar el enlace | Solo llega al buzón del dueño. Vence en **1 hora** y sirve **una sola vez** (el token depende del hash de la contraseña: al cambiarla deja de valer). Va después de `#`, así que nunca se envía a un servidor ni queda en registros, y la página lo borra de la barra de direcciones en cuanto lo lee |
 | Inventar un token | Está firmado con la `SECRET_KEY`: sin ella no se puede fabricar uno válido |
-| Llenar el buzón de alguien | Máximo 3 correos de recuperación por hora a la misma dirección, y 10 solicitudes por hora por IP |
+| Llenar el buzón de alguien | Máximo 10 correos de recuperación por hora a la misma dirección, y 10 solicitudes por hora por IP |
 | Que alguien siga dentro tras el cambio | Al restablecer o cambiar la contraseña, todos los refresh tokens pasan a la lista negra. Los access ya emitidos duran 15 minutos como máximo |
 | Que el dueño no se entere | El aviso "Tu contraseña cambió" llega siempre, también al cambiarla desde el perfil |
 
@@ -343,7 +344,7 @@ a cada uno su propio contador, lo que triplicaría los límites.
 | `LOGIN_MAX_FALLOS` | `5` | Fallos seguidos antes de bloquear la cuenta |
 | `LOGIN_BLOQUEO_MINUTOS` | `15` | Duración del bloqueo |
 | `PASSWORD_RESET_TIMEOUT` | `3600` | Vigencia del enlace de recuperación, en segundos |
-| `RECUPERAR_MAX_POR_CORREO` | `3` | Correos de recuperación por hora a una misma dirección |
+| `RECUPERAR_MAX_POR_CORREO` | `10` | Correos de recuperación por hora a una misma dirección |
 | `LIMITE_ANONIMO` | `300/min` | Toda la API, por IP sin sesión |
 | `LIMITE_USUARIO` | `600/min` | Toda la API, por usuario |
 | `LIMITE_LOGIN` | `30/min` | Logins por IP |
@@ -352,8 +353,10 @@ a cada uno su propio contador, lo que triplicaría los límites.
 | `LIMITE_RECUPERAR_CONFIRMAR` | `20/hour` | Confirmaciones de recuperación por IP |
 
 Para que el correo salga de verdad hay que configurar el SMTP (con Gmail, ver
-`docs/DESPLIEGUE.md`). Sin SMTP la API funciona igual, pero el correo falla y
-queda en el log.
+`docs/DESPLIEGUE.md`, sección 1.5.1), **también en desarrollo**: si el `.env`
+tiene `EMAIL_HOST_USER`, se usa SMTP aunque `DEBUG=True`. Sin credenciales, los
+correos solo se imprimen en la consola del servidor y Django avisa al arrancar
+(`correos.W001`).
 
 Además del límite de login y registro, **toda la API** tiene un límite general:
 300 peticiones por minuto por IP sin sesión y 600 por usuario. Es alto a

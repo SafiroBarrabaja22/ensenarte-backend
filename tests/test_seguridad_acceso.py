@@ -246,22 +246,35 @@ def test_un_token_inventado_no_sirve(api, estudiante, mailoutbox):
     assert respuesta.status_code == 400
 
 
-def test_correo_desconocido_responde_igual_y_no_envia_nada(api, estudiante, mailoutbox):
+def test_correo_sin_cuenta_recibe_aviso_y_la_respuesta_es_igual(api, estudiante, mailoutbox):
+    """Siempre llega un correo; la API responde igual, sin revelar quien esta registrado."""
     existe = api.post(SOLICITAR, {"correo": "estudiante@correo.com"}, format="json")
     no_existe = api.post(SOLICITAR, {"correo": "nadie@correo.com"}, format="json")
     assert existe.status_code == no_existe.status_code == 200
-    assert existe.data["mensaje"] == no_existe.data["mensaje"]
-    assert len(mailoutbox) == 1
+    assert existe.data == no_existe.data
+    assert [c.to for c in mailoutbox] == [["estudiante@correo.com"], ["nadie@correo.com"]]
+    aviso = mailoutbox[1]
+    html = cumple_reglas_de_correo(aviso)
+    assert "No encontramos una cuenta con este correo" in html
+    assert "/pages/signup.html" in html
+    assert "#uid=" not in aviso.body and "token" not in aviso.body
 
 
-def test_cuenta_desactivada_no_recibe_enlace(api, crear_usuario, mailoutbox):
+def test_cuenta_desactivada_no_recibe_enlace_de_restablecer(api, crear_usuario, mailoutbox):
     crear_usuario(nombre="inactivo", is_active=False)
     api.post(SOLICITAR, {"correo": "inactivo@correo.com"}, format="json")
-    assert mailoutbox == []
+    assert len(mailoutbox) == 1
+    assert "#uid=" not in mailoutbox[0].body
+
+
+def test_varias_solicitudes_seguidas_envian_un_correo_cada_una(api, estudiante, mailoutbox):
+    for _ in range(3):
+        api.post(SOLICITAR, {"correo": "estudiante@correo.com"}, format="json")
+    assert len(mailoutbox) == 3
 
 
 @override_settings(RECUPERAR_MAX_POR_CORREO=3)
-def test_maximo_tres_correos_por_hora_a_la_misma_direccion(api, estudiante, mailoutbox):
+def test_hay_un_maximo_de_correos_por_hora_a_la_misma_direccion(api, estudiante, mailoutbox):
     for _ in range(5):
         assert api.post(SOLICITAR, {"correo": "estudiante@correo.com"}, format="json").status_code == 200
     assert len(mailoutbox) == 3
@@ -318,3 +331,27 @@ def test_limite_general_por_usuario(como, estudiante, curso, monkeypatch):
     for _ in range(3):
         assert cliente.get("/api/progreso/").status_code == 200
     assert cliente.get("/api/progreso/").status_code == 429
+
+
+
+def test_el_correo_tiene_la_estructura_estandar(api, estudiante, mailoutbox):
+    """alternative(text/plain, related(text/html, logo)): asi lo muestran bien Gmail y Outlook."""
+    api.post(SOLICITAR, {"correo": "estudiante@correo.com"}, format="json")
+    mensaje = mailoutbox[0].message()
+    assert mensaje.get_content_type() == "multipart/alternative"
+    texto, relacionada = mensaje.get_payload()
+    assert texto.get_content_type() == "text/plain"
+    assert relacionada.get_content_type() == "multipart/related"
+    assert [p.get_content_type() for p in relacionada.get_payload()] == ["text/html", "image/png"]
+
+
+def test_aviso_al_arrancar_si_el_correo_no_sale(settings):
+    from apps.correos.checks import correo_configurado
+
+    settings.EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    assert [a.id for a in correo_configurado(None)] == ["correos.W001"]
+    settings.EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD = "", ""
+    assert [a.id for a in correo_configurado(None)] == ["correos.W002"]
+    settings.EMAIL_HOST_USER, settings.EMAIL_HOST_PASSWORD = "cuenta@gmail.com", "x"
+    assert correo_configurado(None) == []

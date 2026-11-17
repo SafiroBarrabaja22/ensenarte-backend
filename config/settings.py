@@ -228,7 +228,7 @@ LOGIN_BLOQUEO_MINUTOS = env.int("LOGIN_BLOQUEO_MINUTOS", default=15)
 PASSWORD_RESET_TIMEOUT = env.int("PASSWORD_RESET_TIMEOUT", default=3600)
 # Correos de recuperacion por direccion y por hora (evita llenar el buzon de
 # alguien pidiendo recuperaciones a su nombre).
-RECUPERAR_MAX_POR_CORREO = env.int("RECUPERAR_MAX_POR_CORREO", default=3)
+RECUPERAR_MAX_POR_CORREO = env.int("RECUPERAR_MAX_POR_CORREO", default=10)
 # El correo de recuperacion se envia en segundo plano: asi la respuesta tarda
 # lo mismo exista o no la cuenta, y nadie puede averiguar que correos estan
 # registrados midiendo el tiempo. Las pruebas lo ponen en False.
@@ -304,21 +304,22 @@ CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 # ==========================================================
 # CORREO (apps/correos)
 # ==========================================================
-# Con DEBUG=True los correos se imprimen en la consola del servidor y no se
-# envia nada real. Con DEBUG=False se usa SMTP con los datos del entorno.
-# EMAIL_BACKEND permite forzar otro backend (p. ej. probar SMTP en local).
+# Si hay credenciales SMTP (EMAIL_HOST_USER) los correos salen de verdad,
+# tambien en desarrollo: la recuperacion de contrasena solo funciona por correo.
+# Sin credenciales y con DEBUG=True se imprimen en la consola del servidor.
+# EMAIL_BACKEND permite forzar otro backend.
 
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_BACKEND = env(
     "EMAIL_BACKEND",
     default=(
         "django.core.mail.backends.console.EmailBackend"
-        if DEBUG
+        if DEBUG and not EMAIL_HOST_USER
         else "django.core.mail.backends.smtp.EmailBackend"
     ),
 )
 EMAIL_HOST = env("EMAIL_HOST", default="localhost")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
-EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
 EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)

@@ -422,6 +422,7 @@ WeasyPrint, que necesita GTK en Windows). Cada reporte se pide con
 | Constancia de curso completado | `GET /api/reportes/constancia/<slug>/` | El propio estudiante (cualquier rol), solo si completó el curso |
 | Progreso de los estudiantes de un curso | `GET /api/reportes/cursos/<id>/progreso/` | Profesor (solo sus cursos), CreadorDeCursos, Administrador |
 | Estadísticas de la plataforma | `GET /api/reportes/plataforma/` | Administrador. Usa los procedimientos `estadisticas_curso` y `ranking_estudiantes`: solo con MySQL (si no, 503) |
+| Historial de intentos de una evaluación (solo PDF) | `GET /api/reportes/historial/<slug>/?tipo=preguntas\|camara` | El propio estudiante (cualquier rol). Botón "Exportar PDF" en la tarjeta "Tu progreso" de cada evaluación; mismo título y diseño que la página |
 
 Formato común: logo arriba, título, fecha de generación, tipografía Helvetica
 (PDF) / Arial (Excel), encabezados de tabla teal, filas alternadas y

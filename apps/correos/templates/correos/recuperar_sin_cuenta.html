@@ -1,0 +1,11 @@
+{% extends "correos/base.html" %}
+
+{% block preheader %}Recibimos una solicitud para restablecer una contraseña con este correo, pero no tiene cuenta.{% endblock %}
+
+{% block contenido %}
+<h1 style="margin:0 0 16px 0; font-family:{{ c.fuente }}; font-size:24px; line-height:1.3; color:{{ c.tinta }};">No encontramos una cuenta con este correo</h1>
+<p style="margin:0 0 16px 0;">Recibimos una solicitud para restablecer la contraseña de <strong>{{ direccion }}</strong> en <strong>enSEÑArte</strong> el {{ fecha|date:"j \d\e F \d\e Y \a \l\a\s H:i" }}, pero ese correo no está registrado.</p>
+<p style="margin:0 0 8px 0;">Si te registraste con otro correo, pide la recuperación con ese. Si todavía no tienes cuenta, puedes crearla:</p>
+{% include "correos/_boton.html" with url=url_frontend|add:"/pages/signup.html" texto="Crear mi cuenta" %}
+<p style="margin:16px 0 0 0; color:{{ c.texto_suave }}; font-size:14px;">Si no fuiste tú, ignora este correo: no se hizo ningún cambio.</p>
+{% endblock %}

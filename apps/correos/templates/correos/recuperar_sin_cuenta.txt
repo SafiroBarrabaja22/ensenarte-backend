@@ -1,0 +1,12 @@
+{% autoescape off %}No encontramos una cuenta con este correo
+
+Recibimos una solicitud para restablecer la contraseña de {{ direccion }} en enSEÑArte el {{ fecha|date:"j \d\e F \d\e Y \a \l\a\s H:i" }}, pero ese correo no está registrado.
+
+Si te registraste con otro correo, pide la recuperación con ese. Si todavía no tienes cuenta, puedes crearla:
+{{ url_frontend }}/pages/signup.html
+
+Si no fuiste tú, ignora este correo: no se hizo ningún cambio.
+
+--
+enSEÑArte · Aprende Lengua de Señas Colombiana
+{% endautoescape %}

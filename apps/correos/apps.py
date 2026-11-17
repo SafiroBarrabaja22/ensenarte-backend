@@ -6,3 +6,6 @@ class CorreosConfig(AppConfig):
 
     name = "apps.correos"
     verbose_name = "Correos"
+
+    def ready(self):
+        from . import checks  # noqa: F401  (registra el aviso de correo sin configurar)

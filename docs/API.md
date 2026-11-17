@@ -161,11 +161,13 @@ Si el correo es de una cuenta activa, le envía un correo con el botón
 - El enlace vence en 1 hora (`PASSWORD_RESET_TIMEOUT`) y sirve una sola vez.
 - `uid` y `token` van después de `#`: el navegador no los envía a ningún servidor.
 - Si el dueño no lo pidió, ignora el correo y su contraseña no cambia.
-- Límites: 10 solicitudes por hora por IP (**429**) y 3 correos por hora por
+- Si el correo **no tiene cuenta**, le llega el aviso "No encontramos una cuenta
+  con este correo" con un enlace para registrarse. Así siempre llega un correo, y
+  la respuesta de la API es idéntica en los dos casos.
+- El enlace **solo** viaja por correo: la respuesta nunca trae `uid` ni `token`,
+  tampoco con `DEBUG=True`.
+- Límites: 10 solicitudes por hora por IP (**429**) y 10 correos por hora por
   dirección (pasado ese número responde igual, pero no envía nada).
-
-Con `DEBUG=True` incluye además un objeto `debug` con el `uid` y el `token`, de
-modo que el flujo se pueda probar sin servidor de correo.
 
 ## POST `/auth/recuperar/confirmar/`
 
@@ -533,6 +535,30 @@ Responde con la palabra actualizada. **400** si falta el archivo.
 
 Igual que el anterior pero para el campo `video` de una pregunta de
 evaluación.
+
+---
+
+# 6. Reportes
+
+Todos devuelven el archivo como adjunto. Se descargan con fetch y la cabecera
+`Authorization: Bearer` (un enlace directo no lleva el token y responde 401).
+
+## GET `/reportes/historial/<slug>/?tipo=preguntas|camara`
+
+Autenticado (cualquier rol). PDF con las últimas 5 sesiones **del usuario
+autenticado** en la evaluación del curso. `tipo` es `preguntas` (por defecto) o
+`camara`. Tiene el mismo título que la página ("Abecedario · Evaluación") y el
+mismo diseño que la tarjeta "Tu progreso":
+
+- el anillo con la última sesión y la comparación con la anterior;
+- la gráfica "Tus últimos intentos";
+- una tarjeta por sesión;
+- la tabla de detalle (aciertos, errores, preguntas y puntaje; con cámara:
+  correctas, total, puntaje, umbral y si se aprobó).
+
+Los puntajes se calculan igual que en la página. **400** si `tipo` no es válido,
+**404** si el curso no existe o no está activo. Nombre del archivo:
+`historial-<slug>-<tipo>-<AAAAMMDD>.pdf`.
 
 ---
 

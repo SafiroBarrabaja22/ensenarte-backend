@@ -1,4 +1,3 @@
-from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, status
@@ -16,6 +15,7 @@ from rest_framework_simplejwt.views import (
 from apps.correos.servicio import (
     al_confirmar,
     avisar_password_cambiado,
+    avisar_recuperacion_sin_cuenta,
     en_segundo_plano,
     enviar_bienvenida,
     enviar_recuperacion,
@@ -270,24 +270,13 @@ class CambiarPasswordView(APIView):
     "qué cuentas existen). Si el correo pertenece a una cuenta activa, le envía un correo con "
     "un enlace de un solo uso (vence en 1 hora, `PASSWORD_RESET_TIMEOUT`) para que el dueño "
     "confirme que fue él y elija la contraseña nueva. Límites: 10 por hora por IP y 3 correos "
-    "por hora por dirección. Con `DEBUG=True` agrega `debug` con `uid` y `token` para probar "
-    "sin servidor de correo.",
+    "por hora por dirección. Si el correo no tiene cuenta, le envía un aviso de que no está "
+    "registrado. El enlace **solo** viaja por correo, nunca en la respuesta.",
     request=SolicitarRecuperacionSerializer,
     responses=respuestas(
         ok(
-            inline_serializer(
-                "RecuperacionSolicitada",
-                {
-                    "mensaje": serializers.CharField(),
-                    "debug": inline_serializer(
-                        "RecuperacionDebug", {"uid": serializers.CharField(), "token": serializers.CharField()}, required=False
-                    ),
-                },
-            ),
-            {
-                "mensaje": "Si el correo esta registrado, enviamos las instrucciones de recuperacion.",
-                "debug": {"uid": "Mw", "token": "c4k2j1-0f3b8e2d1a9c7e6b5d4f3a2b1c0d9e8f"},
-            },
+            inline_serializer("RecuperacionSolicitada", {"mensaje": serializers.CharField()}),
+            {"mensaje": "Si el correo esta registrado, enviamos las instrucciones de recuperacion."},
         ),
         error_400({"correo": ["Introduzca una dirección de correo electrónico válida."]}),
     ),
@@ -298,7 +287,8 @@ class SolicitarRecuperacionView(LimiteDeIntentos, APIView):
 
     Envia al correo un enlace de un solo uso. El dueno confirma que fue el quien
     lo pidio al abrirlo; si no lo pidio, lo ignora y su contrasena no cambia.
-    En desarrollo (DEBUG=True) tambien devuelve uid y token para probar sin SMTP.
+    Si el correo no tiene cuenta, le llega un aviso. El enlace nunca va en la
+    respuesta, tampoco en desarrollo: solo quien tiene acceso al buzon lo ve.
     """
 
     permission_classes = [AllowAny]
@@ -317,8 +307,8 @@ class SolicitarRecuperacionView(LimiteDeIntentos, APIView):
         cuentas = serializer.cuentas()
         for cuenta in cuentas:
             en_segundo_plano(enviar_recuperacion, cuenta["usuario"], cuenta["uid"], cuenta["token"])
-        if settings.DEBUG and cuentas:
-            respuesta["debug"] = {"uid": cuentas[0]["uid"], "token": cuentas[0]["token"]}
+        if not cuentas:
+            en_segundo_plano(avisar_recuperacion_sin_cuenta, serializer.validated_data["correo"])
         return Response(respuesta)
 
 

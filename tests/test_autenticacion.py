@@ -177,26 +177,19 @@ def test_cambiar_password_sin_token_responde_401(api):
     assert api.post("/api/auth/cambiar-password/", {}, format="json").status_code == 401
 
 
-def test_solicitar_recuperacion_en_debug_devuelve_token(api, estudiante, settings):
-    settings.DEBUG = True
+@pytest.mark.parametrize("debug", [True, False])
+def test_el_enlace_de_recuperacion_nunca_va_en_la_respuesta(api, estudiante, settings, debug):
+    """Ni en desarrollo: solo quien tiene acceso al buzon puede restablecer."""
+    settings.DEBUG = debug
     respuesta = api.post("/api/auth/recuperar/solicitar/", {"correo": "estudiante@correo.com"}, format="json")
     assert respuesta.status_code == 200
-    assert {"uid", "token"} <= set(respuesta.data["debug"])
+    assert set(respuesta.data) == {"mensaje"}
 
 
-def test_solicitar_recuperacion_no_revela_si_el_correo_existe(api, estudiante, settings):
-    settings.DEBUG = True
+def test_solicitar_recuperacion_no_revela_si_el_correo_existe(api, estudiante):
     existe = api.post("/api/auth/recuperar/solicitar/", {"correo": "estudiante@correo.com"}, format="json")
     no_existe = api.post("/api/auth/recuperar/solicitar/", {"correo": "nadie@correo.com"}, format="json")
-    assert existe.data["mensaje"] == no_existe.data["mensaje"]
-    assert "debug" not in no_existe.data
-
-
-def test_solicitar_recuperacion_sin_debug_no_expone_token(api, estudiante, settings):
-    settings.DEBUG = False
-    respuesta = api.post("/api/auth/recuperar/solicitar/", {"correo": "estudiante@correo.com"}, format="json")
-    assert respuesta.status_code == 200
-    assert "debug" not in respuesta.data
+    assert existe.data == no_existe.data
 
 
 def test_solicitar_recuperacion_con_correo_invalido_responde_400(api):

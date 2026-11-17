@@ -153,7 +153,7 @@ Rutas raíz en [config/urls.py](config/urls.py). Permiso por defecto de DRF:
 | POST | `verify/` (simplejwt) | AllowAny |
 | GET, PATCH | `perfil/` | IsAuthenticated |
 | POST | `cambiar-password/` | IsAuthenticated |
-| POST | `recuperar/solicitar/` (con `DEBUG=True` devuelve uid/token en `debug`) | AllowAny |
+| POST | `recuperar/solicitar/` (el enlace solo va por correo; nunca en la respuesta) | AllowAny |
 | POST | `recuperar/confirmar/` (`uid`, `token`, `password_nueva`) | AllowAny |
 
 **Catálogo y evaluación** — `/api/` ([apps/cursos/urls.py](apps/cursos/urls.py))
@@ -381,7 +381,7 @@ en SQLite (pruebas en local y en la CI) y PostgreSQL no ejecutan nada.
 ## Correos (apps/correos)
 
 - [apps/correos/servicio.py](apps/correos/servicio.py): `enviar_bienvenida`, `enviar_resultados`
-  `avisar_curso_completado`, `enviar_recuperacion` (enlace de contraseña, se envía con `en_segundo_plano`)
+  `avisar_curso_completado`, `enviar_recuperacion` y `avisar_recuperacion_sin_cuenta` (con `en_segundo_plano`)
   y `avisar_password_cambiado`. Todas llevan `@sin_romper`, que registra cualquier error en el
   log y devuelve False. Se disparan con `al_confirmar(funcion, ...)`, es decir,
   `transaction.on_commit(robust=True)`, desde `RegistroView`, `_finalizar`/`_cerrar_intento`
@@ -397,6 +397,12 @@ en SQLite (pruebas en local y en la CI) y PostgreSQL no ejecutan nada.
   (Django 6.1 avisa que `EMAIL_*` pasará a `MAILERS` en Django 7).
 
 ## Reportes (apps/reportes)
+
+- **Historial de intentos** ([apps/reportes/historial.py](apps/reportes/historial.py)): PDF propio
+  (no usa `datos.py`) que replica la tarjeta "Tu progreso" del frontend con dibujos de ReportLab
+  (anillo, gráfica y tarjetas). Si cambias el diseño de `js/lib/historial-intentos.js` o sus
+  estilos en `css/extra.css`, actualiza también este PDF. Los puntajes usan `_redondear()`
+  (como `Math.round` de JS). Botón "Exportar PDF" en `historial-intentos.js` (opción `exportar`).
 
 - `datos.py` arma un `Reporte` neutro (`modelo.py`: `Tabla` con `formatos` por columna) y
   `pdf.py`/`excel.py` lo dibujan. Para un reporte nuevo: una función en `datos.py` y un

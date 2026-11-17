@@ -23,6 +23,9 @@ COLORES = {
     "texto_tenue": "#728589",
     "teal": "#0f7f7a",
     "teal_oscuro": "#075b5b",
+    "teal_claro": "#7cc9bd",
+    "menta_fuerte": "#d9eee7",
+    "coral": "#f26b5e",
     "coral_palido": "#fce4e0",
     "error_texto": "#8a2e24",
 }

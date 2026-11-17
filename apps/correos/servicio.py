@@ -43,11 +43,18 @@ class CorreoConLogo(EmailMultiAlternatives):
     """
     EmailMultiAlternatives con el logo incrustado (Content-ID) junto al HTML.
 
-    Django 5.2 (requirements.txt) arma el mensaje con la API antigua de
-    email.mime: se usa mixed_subtype = "related" y un MIMEImage.
-    Django 6 usa la API moderna y ya no admite mixed_subtype: se convierte la
-    parte HTML en multipart/related con add_related(). En ambos casos el HTML
-    referencia la imagen como src="cid:logo-ensenarte".
+    En las dos versiones de Django el resultado tiene la estructura estandar
+    que Gmail, Outlook y Apple Mail muestran bien:
+
+        multipart/alternative
+        ├── text/plain
+        └── multipart/related
+            ├── text/html          (src="cid:logo-ensenarte")
+            └── image/png          (Content-ID: <logo-ensenarte>)
+
+    Django 5.2 (requirements.txt) usa la API antigua de email.mime: se arma la
+    parte related a mano en _create_alternatives. Django 6 usa la API moderna:
+    add_related() sobre la parte HTML.
     """
 
     API_MODERNA = django.VERSION >= (6, 0)
@@ -55,12 +62,27 @@ class CorreoConLogo(EmailMultiAlternatives):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.logo = RUTA_LOGO.read_bytes()
-        if not self.API_MODERNA:
-            self.mixed_subtype = "related"
+
+    def _create_alternatives(self, msg):
+        """Django 5.2: el HTML y el logo van juntos en un multipart/related."""
+        if self.API_MODERNA:
+            return super()._create_alternatives(msg)
+        from django.core.mail.message import SafeMIMEMultipart, SafeMIMEText
+
+        alternativa = SafeMIMEMultipart(_subtype="alternative", encoding=self.encoding)
+        alternativa.attach(msg)   # text/plain
+        for contenido, tipo in self.alternatives:
+            if tipo != "text/html":
+                alternativa.attach(self._create_mime_attachment(contenido, tipo))
+                continue
+            relacionada = SafeMIMEMultipart(_subtype="related", encoding=self.encoding)
+            relacionada.attach(SafeMIMEText(contenido, "html", self.encoding))
             imagen = MIMEImage(self.logo, _subtype="png")
             imagen.add_header("Content-ID", f"<{CID_LOGO}>")
             imagen.add_header("Content-Disposition", "inline", filename="logo.png")
-            self.attach(imagen)
+            relacionada.attach(imagen)
+            alternativa.attach(relacionada)
+        return alternativa
 
     def message(self, *args, **kwargs):
         mensaje = super().message(*args, **kwargs)
@@ -232,5 +254,21 @@ def avisar_password_cambiado(usuario, motivo="cambio"):
         "password_cambiado",
         {"nombre": usuario.username, "motivo": motivo, "fecha": timezone.localtime()},
         [usuario.email],
+    )
+    return enviar(correo)
+
+
+@sin_romper
+def avisar_recuperacion_sin_cuenta(direccion):
+    """
+    6. Alguien pidio recuperar la contrasena de un correo sin cuenta activa.
+    Asi el correo SIEMPRE llega (quien lo pidio sabe que no hay cuenta) y la
+    respuesta de la API sigue siendo la misma, sin revelar que cuentas existen.
+    """
+    correo = construir(
+        "Solicitud de recuperación en enSEÑArte",
+        "recuperar_sin_cuenta",
+        {"direccion": direccion, "fecha": timezone.localtime()},
+        [direccion],
     )
     return enviar(correo)

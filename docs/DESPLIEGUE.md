@@ -163,6 +163,12 @@ llega únicamente por correo. Con una cuenta de Gmail del equipo:
 Gmail permite unos 500 correos al día desde una cuenta personal, de sobra para
 el proyecto.
 
+**En desarrollo es igual:** pon las mismas variables `EMAIL_*` en el `.env` de tu
+equipo. Si `EMAIL_HOST_USER` tiene valor, el correo sale por SMTP aunque
+`DEBUG=True`. Sin esas variables los correos solo se imprimen en la consola de
+`runserver` y no llegan a Gmail. `runserver` y `manage.py check` lo avisan con
+`correos.W001`.
+
 ### 1.6 Primera puesta en marcha
 
 ```bash
@@ -399,7 +405,7 @@ Django las lee de `/srv/ensenarte/ensenarte-backend/.env` (permisos 600, dueño
 | `LOGIN_MAX_FALLOS` | No (`5`) | `5` | Contraseñas incorrectas seguidas antes de bloquear la cuenta. |
 | `LOGIN_BLOQUEO_MINUTOS` | No (`15`) | `15` | Duración del bloqueo de la cuenta. |
 | `PASSWORD_RESET_TIMEOUT` | No (`3600`) | `3600` | Vigencia del enlace de recuperación, en segundos. |
-| `RECUPERAR_MAX_POR_CORREO` | No (`3`) | `3` | Correos de recuperación por hora a la misma dirección. |
+| `RECUPERAR_MAX_POR_CORREO` | No (`10`) | `10` | Correos de recuperación por hora a la misma dirección. |
 | `LIMITE_LOGIN` / `LIMITE_REGISTRO` / `LIMITE_RECUPERAR_SOLICITAR` / `LIMITE_RECUPERAR_CONFIRMAR` | No | `30/min`, `30/hour`, `10/hour`, `20/hour` | Peticiones por IP. Ver docs/SEGURIDAD.md, sección 8. |
 | `LIMITE_ANONIMO` / `LIMITE_USUARIO` | No | `300/min`, `600/min` | Límite general de peticiones a toda la API, por IP (sin sesión) y por usuario. |
 | `CORREOS_EN_SEGUNDO_PLANO` | No (`True`) | `True` | Envía el correo de recuperación sin hacer esperar la respuesta. No lo cambies: evita que se pueda saber qué correos existen midiendo el tiempo. |

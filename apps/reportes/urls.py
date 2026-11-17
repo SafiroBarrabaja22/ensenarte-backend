@@ -6,4 +6,5 @@ urlpatterns = [
     path("constancia/<slug:slug>/", views.constancia, name="reporte_constancia"),
     path("cursos/<int:pk>/progreso/", views.progreso_curso, name="reporte_progreso_curso"),
     path("plataforma/", views.plataforma, name="reporte_plataforma"),
+    path("historial/<slug:slug>/", views.historial_intentos, name="reporte_historial"),
 ]

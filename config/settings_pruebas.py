@@ -14,6 +14,19 @@ import tempfile
 # un DATABASE_URL de desarrollo nunca debe terminar en las pruebas.
 os.environ["DATABASE_URL"] = os.environ.get("PRUEBAS_DATABASE_URL", "sqlite://:memory:")
 
+# Bases compartidas a las que las pruebas NUNCA deben conectarse (Django crearia
+# test_<nombre> en ese servidor). Se puede ampliar con BASES_PROTEGIDAS=a,b.
+from urllib.parse import urlsplit  # noqa: E402
+
+from django.core.exceptions import ImproperlyConfigured  # noqa: E402
+
+BASES_PROTEGIDAS = {"proyecto_v2", *filter(None, os.environ.get("BASES_PROTEGIDAS", "").split(","))}
+_base_pruebas = urlsplit(os.environ["DATABASE_URL"]).path.lstrip("/")
+if _base_pruebas in BASES_PROTEGIDAS:
+    raise ImproperlyConfigured(
+        f"Las pruebas no pueden apuntar a '{_base_pruebas}' (base compartida). "
+        "Usa PRUEBAS_DATABASE_URL con proyecto_pruebas."
+    )
 os.environ.setdefault("SECRET_KEY", "clave-solo-para-pruebas-no-usar-en-produccion")
 # Con DEBUG=False settings.py activa SECURE_SSL_REDIRECT y el cliente de pruebas
 # (http) recibiria 301. Django vuelve a poner DEBUG=False al correr las pruebas.

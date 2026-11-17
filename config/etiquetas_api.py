@@ -16,5 +16,5 @@ DESCRIPCION_ETIQUETAS = [
     {"name": ETIQUETA_CURSOS, "description": "Catálogo público, diccionario visual y progreso del estudiante."},
     {"name": ETIQUETA_EVALUACION, "description": "Evaluación por preguntas y evaluación del abecedario con cámara."},
     {"name": ETIQUETA_PANEL, "description": "Administración de cursos, preguntas, opciones, diccionario, gifs y biblioteca visual."},
-    {"name": ETIQUETA_REPORTES, "description": "Cifras del panel y estrellas de los estudiantes, en JSON. No hay exportación a PDF ni Excel."},
+    {"name": ETIQUETA_REPORTES, "description": "Cifras del panel, estrellas de los estudiantes y reportes descargables en PDF y Excel."},
 ]

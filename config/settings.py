@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     "apps.cursos",
     "apps.evaluacion_camara",
     "apps.correos",
+    "apps.reportes",
 ]
 
 MIDDLEWARE = [
@@ -230,6 +231,9 @@ CORS_ALLOWED_ORIGIN_REGEXES = []
 # La API usa JWT en la cabecera Authorization, no cookies: no hace falta que
 # el navegador envie credenciales entre origenes.
 CORS_ALLOW_CREDENTIALS = False
+# Los reportes envian el nombre del archivo en Content-Disposition: sin esto el
+# navegador no deja que el JavaScript del frontend lo lea.
+CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 
 
 # ==========================================================

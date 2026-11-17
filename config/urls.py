@@ -29,6 +29,7 @@ urlpatterns = [
         name="docs_redoc",
     ),
     path("api/auth/", include("apps.usuarios.urls")),
+    path("api/reportes/", include("apps.reportes.urls")),
     path("api/", include("apps.cursos.urls")),
     path(
         "api/evaluacion-camara/",

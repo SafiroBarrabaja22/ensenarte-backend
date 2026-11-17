@@ -397,6 +397,31 @@ cada correo, `<nombre>.html` y `<nombre>.txt`.
 
 ---
 
+## Reportes en PDF y Excel
+
+App `apps/reportes`: ReportLab para el PDF y openpyxl para el Excel (no se usa
+WeasyPrint, que necesita GTK en Windows). Cada reporte se pide con
+`?formato=pdf` (por defecto) o `?formato=xlsx`:
+
+| Reporte | Endpoint | Quién |
+|---|---|---|
+| Constancia de curso completado | `GET /api/reportes/constancia/<slug>/` | El propio estudiante (cualquier rol), solo si completó el curso |
+| Progreso de los estudiantes de un curso | `GET /api/reportes/cursos/<id>/progreso/` | Profesor (solo sus cursos), CreadorDeCursos, Administrador |
+| Estadísticas de la plataforma | `GET /api/reportes/plataforma/` | Administrador. Usa los procedimientos `estadisticas_curso` y `ranking_estudiantes`: solo con MySQL (si no, 503) |
+
+Formato común: logo arriba, título, fecha de generación, tipografía Helvetica
+(PDF) / Arial (Excel), encabezados de tabla teal, filas alternadas y
+numeración ("Página X de Y" en el PDF, `&P de &N` en el pie de impresión del
+Excel). En Excel los números y fechas son valores reales (se pueden ordenar,
+filtrar y sumar). La constancia siempre cabe en una página.
+
+**Descarga desde el frontend:** un enlace directo no lleva el token JWT y la
+API responde 401. El frontend pide el archivo con `fetch` y la cabecera
+`Authorization`, lo convierte en blob y lo descarga. El nombre llega en
+`Content-Disposition`, que se expone por CORS (`CORS_EXPOSE_HEADERS`).
+
+---
+
 ## Reglas de negocio en la base de datos (MySQL)
 
 Además de la API, la base de datos impide romper estas reglas aunque el cambio

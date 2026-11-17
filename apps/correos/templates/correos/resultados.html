@@ -1,0 +1,39 @@
+{% extends "correos/base.html" %}
+
+{% block preheader %}{{ curso.titulo }}: {{ aciertos }} aciertos y {{ errores }} errores.{% endblock %}
+
+{% block contenido %}
+<h1 style="margin:0 0 8px 0; font-family:{{ c.fuente }}; font-size:24px; line-height:1.3; color:{{ c.tinta }};">Terminaste la evaluación</h1>
+<p style="margin:0 0 24px 0; color:{{ c.texto_suave }};">{{ nombre }}, estos son tus resultados en <strong style="color:{{ c.tinta }};">{{ curso.titulo }}</strong>.</p>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; border:1px solid {{ c.linea }}; border-radius:12px;">
+  <tr>
+    <td align="center" width="33%" style="padding:18px 8px; border-right:1px solid {{ c.linea }};">
+      <div style="font-family:{{ c.fuente }}; font-size:28px; font-weight:bold; line-height:1.1; color:{{ c.teal }};">{{ aciertos }}</div>
+      <div style="font-family:{{ c.fuente }}; font-size:13px; color:{{ c.texto_suave }};">Aciertos</div>
+    </td>
+    <td align="center" width="33%" style="padding:18px 8px; border-right:1px solid {{ c.linea }};">
+      <div style="font-family:{{ c.fuente }}; font-size:28px; font-weight:bold; line-height:1.1; color:{{ c.error_texto }};">{{ errores }}</div>
+      <div style="font-family:{{ c.fuente }}; font-size:13px; color:{{ c.texto_suave }};">Errores</div>
+    </td>
+    <td align="center" width="34%" style="padding:18px 8px;">
+      <div style="font-family:{{ c.fuente }}; font-size:28px; font-weight:bold; line-height:1.1; color:{{ c.tinta }};">{{ porcentaje }}%</div>
+      <div style="font-family:{{ c.fuente }}; font-size:13px; color:{{ c.texto_suave }};">de {{ total }} preguntas</div>
+    </td>
+  </tr>
+</table>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:20px 0 0 0;">
+  <tr>
+    <td style="padding:14px 16px; background-color:{{ c.menta }}; border-radius:8px; font-family:{{ c.fuente }}; font-size:15px; color:{{ c.teal_oscuro }};">
+      <strong>{{ mensaje }}</strong>
+    </td>
+  </tr>
+</table>
+
+{% if insignia_100 %}
+<p style="margin:20px 0 0 0;">🏅 ¡Ganaste la insignia <strong>Curso 100 %</strong> por acertar todo a la primera!</p>
+{% endif %}
+
+{% include "correos/_boton.html" with url=url_frontend|add:"/pages/retroalimentacion.html?curso="|add:curso.nombre texto="Ver el detalle" %}
+{% endblock %}

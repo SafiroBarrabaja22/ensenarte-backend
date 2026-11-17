@@ -369,6 +369,34 @@ suite y la borra; `proyecto_pruebas` no se toca. Nunca uses `proyecto_v2`.
 
 ---
 
+## Correos
+
+La app `apps/correos` envía tres correos con plantilla HTML y versión en texto
+plano (`EmailMultiAlternatives`):
+
+| Correo | Cuándo | Para quién |
+|---|---|---|
+| Bienvenida | Al registrarse | El nuevo estudiante |
+| Resultados | Al terminar una evaluación por preguntas (aciertos, errores, porcentaje y mensaje) | El estudiante |
+| Curso completado | La primera vez que un estudiante completa un curso, por preguntas o con cámara | El profesor que creó el curso |
+
+- **Desarrollo:** con `DEBUG=True` los correos se imprimen en la consola de
+  `runserver` y no se envía nada.
+- **Producción:** con `DEBUG=False` se usa SMTP con `EMAIL_HOST`, `EMAIL_PORT`,
+  `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD`, `EMAIL_USE_TLS` y `DEFAULT_FROM_EMAIL`
+  (ver `.env.example`). `URL_FRONTEND` define los enlaces de los botones.
+- **Compatibilidad con clientes de correo:** maquetación con tablas, estilos
+  solo en línea, ancho máximo de 600px y logo incrustado por Content-ID
+  (`apps/correos/recursos/logo.png`), no enlazado.
+- **Robustez:** el envío se programa con `transaction.on_commit` y cualquier
+  error (SMTP caído, credenciales, plantilla) queda en el log sin afectar el
+  registro ni la evaluación. `EMAIL_TIMEOUT` (10 s) limita la espera.
+
+Las plantillas están en `apps/correos/templates/correos/`: `base.html` y, para
+cada correo, `<nombre>.html` y `<nombre>.txt`.
+
+---
+
 ## Reglas de negocio en la base de datos (MySQL)
 
 Además de la API, la base de datos impide romper estas reglas aunque el cambio

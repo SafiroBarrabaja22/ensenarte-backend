@@ -56,6 +56,7 @@ INSTALLED_APPS = [
     "apps.usuarios",
     "apps.cursos",
     "apps.evaluacion_camara",
+    "apps.correos",
 ]
 
 MIDDLEWARE = [
@@ -229,6 +230,39 @@ CORS_ALLOWED_ORIGIN_REGEXES = []
 # La API usa JWT en la cabecera Authorization, no cookies: no hace falta que
 # el navegador envie credenciales entre origenes.
 CORS_ALLOW_CREDENTIALS = False
+
+
+# ==========================================================
+# CORREO (apps/correos)
+# ==========================================================
+# Con DEBUG=True los correos se imprimen en la consola del servidor y no se
+# envia nada real. Con DEBUG=False se usa SMTP con los datos del entorno.
+# EMAIL_BACKEND permite forzar otro backend (p. ej. probar SMTP en local).
+
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default=(
+        "django.core.mail.backends.console.EmailBackend"
+        if DEBUG
+        else "django.core.mail.backends.smtp.EmailBackend"
+    ),
+)
+EMAIL_HOST = env("EMAIL_HOST", default="localhost")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)
+# Segundos maximos esperando al servidor SMTP: un SMTP caido no debe colgar
+# el registro de un usuario.
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="enSEÑArte <no-responder@ensenarte.local>")
+
+if EMAIL_USE_TLS and EMAIL_USE_SSL:
+    raise ImproperlyConfigured("EMAIL_USE_TLS y EMAIL_USE_SSL no pueden estar activos a la vez.")
+
+# URL publica del frontend, para los enlaces de los correos.
+URL_FRONTEND = env("URL_FRONTEND", default="http://127.0.0.1:5500")
 
 
 # ==========================================================

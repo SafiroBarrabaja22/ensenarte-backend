@@ -12,6 +12,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from apps.correos.servicio import al_confirmar, enviar_bienvenida
 from config.openapi import (
     EJEMPLO_PERFIL,
     ETIQUETA_AUTENTICACION,
@@ -82,6 +83,8 @@ class RegistroView(APIView):
         serializer = RegistroSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        # Tras el commit y sin propagar errores: un SMTP caido no impide registrarse.
+        al_confirmar(enviar_bienvenida, user)
         perfil, _ = PerfilUsuario.objects.get_or_create(user=user)
         return Response(
             {

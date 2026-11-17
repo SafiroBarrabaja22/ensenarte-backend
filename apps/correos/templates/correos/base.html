@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="x-apple-disable-message-reformatting">
+<title>{{ asunto }}</title>
+</head>
+{% comment %}
+  Plantilla base de los correos de enSEÑArte.
+  Reglas de los clientes de correo: maquetacion con tablas, estilos SOLO en
+  linea (Gmail borra los <style>), ancho maximo 600px y logo incrustado (cid:).
+  Los colores vienen de apps/correos/servicio.py (COLORES, igual que tokens.css).
+{% endcomment %}
+<body style="margin:0; padding:0; background-color:{{ c.fondo }};">
+  <div style="display:none; max-height:0; overflow:hidden; font-size:1px; line-height:1px; color:{{ c.fondo }};">{% block preheader %}{% endblock %}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; background-color:{{ c.fondo }};">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%; max-width:600px; background-color:{{ c.blanco }}; border:1px solid {{ c.linea }}; border-radius:12px;">
+          <tr>
+            <td style="padding:28px 32px 20px 32px; border-bottom:1px solid {{ c.linea }};">
+              <img src="cid:{{ cid_logo }}" width="180" height="42" alt="enSEÑArte" style="display:block; width:180px; height:42px; border:0; outline:none; text-decoration:none;">
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px; font-family:{{ c.fuente }}; font-size:16px; line-height:1.6; color:{{ c.tinta }};">
+              {% block contenido %}{% endblock %}
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px; background-color:{{ c.fondo }}; border-top:1px solid {{ c.linea }}; border-radius:0 0 12px 12px; font-family:{{ c.fuente }}; font-size:12px; line-height:1.5; color:{{ c.texto_tenue }};">
+              {% block pie %}Recibes este correo porque tienes una cuenta en enSEÑArte, la plataforma para aprender Lengua de Señas Colombiana.{% endblock %}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

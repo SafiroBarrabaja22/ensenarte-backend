@@ -1,0 +1,17 @@
+{% autoescape off %}Terminaste la evaluación
+
+{{ nombre }}, estos son tus resultados en {{ curso.titulo }}:
+
+  Aciertos:   {{ aciertos }}
+  Errores:    {{ errores }}
+  Resultado:  {{ porcentaje }}% de {{ total }} preguntas
+
+{{ mensaje }}
+{% if insignia_100 %}
+¡Ganaste la insignia Curso 100 % por acertar todo a la primera!
+{% endif %}
+Ver el detalle: {{ url_frontend }}/pages/retroalimentacion.html?curso={{ curso.nombre }}
+
+--
+enSEÑArte · Aprende Lengua de Señas Colombiana
+{% endautoescape %}

@@ -1,0 +1,19 @@
+{% extends "correos/base.html" %}
+
+{% block preheader %}{{ estudiante }} completó tu curso {{ curso.titulo }}.{% endblock %}
+
+{% block contenido %}
+<h1 style="margin:0 0 16px 0; font-family:{{ c.fuente }}; font-size:24px; line-height:1.3; color:{{ c.tinta }};">Un estudiante completó tu curso</h1>
+<p style="margin:0 0 16px 0;">Hola, {{ profesor }}.</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 8px 0;">
+  <tr>
+    <td style="padding:16px; background-color:{{ c.fondo }}; border:1px solid {{ c.linea }}; border-radius:8px; font-family:{{ c.fuente }}; font-size:16px; color:{{ c.tinta }};">
+      <strong>{{ estudiante }}</strong> completó <strong>{{ curso.titulo }}</strong>.
+    </td>
+  </tr>
+</table>
+<p style="margin:16px 0 0 0; color:{{ c.texto_suave }};">Puedes revisar las estrellas de tus estudiantes desde el panel.</p>
+{% include "correos/_boton.html" with url=url_frontend|add:"/pages/panel/index.html" texto="Ir al panel" %}
+{% endblock %}
+
+{% block pie %}Recibes este aviso porque eres el profesor de {{ curso.titulo }} en enSEÑArte.{% endblock %}

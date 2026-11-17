@@ -4,6 +4,7 @@ from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.cursos.models import Curso, ProgresoUsuario
+from apps.correos.servicio import al_confirmar, avisar_curso_completado
 from apps.cursos.serializers import InsigniaSerializer
 from apps.usuarios.models import PerfilUsuario
 
@@ -128,6 +129,8 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
                 and bool(curso.insignia_100_id)
             )
             if evaluacion.aprobado and not estaba_completado:
+                # Primera vez que completa el curso: avisar a su profesor.
+                al_confirmar(avisar_curso_completado, curso, evaluacion.usuario)
                 perfil, _ = PerfilUsuario.objects.get_or_create(
                     user=evaluacion.usuario
                 )

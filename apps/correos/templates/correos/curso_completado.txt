@@ -1,0 +1,10 @@
+{% autoescape off %}Hola, {{ profesor }}.
+
+{{ estudiante }} completó tu curso {{ curso.titulo }}.
+
+Puedes revisar las estrellas de tus estudiantes desde el panel:
+{{ url_frontend }}/pages/panel/index.html
+
+--
+Recibes este aviso porque eres el profesor de {{ curso.titulo }} en enSEÑArte.
+{% endautoescape %}

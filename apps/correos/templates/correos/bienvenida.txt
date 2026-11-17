@@ -1,0 +1,15 @@
+{% autoescape off %}¡Bienvenid@, {{ nombre }}!
+
+Tu cuenta en enSEÑArte ya está lista. Desde ahora puedes:
+
+- Explorar los cursos y su diccionario visual.
+- Practicar con evaluaciones de preguntas y con la cámara.
+- Ganar estrellas e insignias al completar cada curso.
+
+Ver los cursos: {{ url_frontend }}/pages/cursos-usuario.html
+
+Si no creaste esta cuenta, puedes ignorar este correo.
+
+--
+enSEÑArte · Aprende Lengua de Señas Colombiana
+{% endautoescape %}

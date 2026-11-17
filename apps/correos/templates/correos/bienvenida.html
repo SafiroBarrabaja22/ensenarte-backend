@@ -1,0 +1,15 @@
+{% extends "correos/base.html" %}
+
+{% block preheader %}Tu cuenta está lista: empieza a aprender Lengua de Señas Colombiana.{% endblock %}
+
+{% block contenido %}
+<h1 style="margin:0 0 16px 0; font-family:{{ c.fuente }}; font-size:24px; line-height:1.3; color:{{ c.tinta }};">¡Bienvenid@, {{ nombre }}!</h1>
+<p style="margin:0 0 16px 0;">Tu cuenta en <strong>enSEÑArte</strong> ya está lista. Desde ahora puedes:</p>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 8px 0;">
+  <tr><td style="padding:6px 0; color:{{ c.tinta }};">✔ Explorar los cursos y su diccionario visual.</td></tr>
+  <tr><td style="padding:6px 0; color:{{ c.tinta }};">✔ Practicar con evaluaciones de preguntas y con la cámara.</td></tr>
+  <tr><td style="padding:6px 0; color:{{ c.tinta }};">✔ Ganar estrellas e insignias al completar cada curso.</td></tr>
+</table>
+{% include "correos/_boton.html" with url=url_frontend|add:"/pages/cursos-usuario.html" texto="Ver los cursos" %}
+<p style="margin:16px 0 0 0; color:{{ c.texto_suave }}; font-size:14px;">Si no creaste esta cuenta, puedes ignorar este correo.</p>
+{% endblock %}

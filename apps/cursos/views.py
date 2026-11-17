@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from apps.correos.servicio import al_confirmar, avisar_curso_completado, enviar_resultados
 from apps.usuarios.models import PerfilUsuario
 from config.openapi import (
     EJEMPLO_CURSO,
@@ -332,6 +333,7 @@ def _cerrar_intento(intento):
     progreso, _ = ProgresoUsuario.objects.get_or_create(
         usuario=intento.usuario, curso=intento.curso
     )
+    estaba_completado = progreso.completado
     progreso.aciertos = intento.aciertos
     progreso.errores = intento.errores
     progreso.completado = True
@@ -351,7 +353,18 @@ def _cerrar_intento(intento):
         ).count()
     )
     perfil.save()
+    if not estaba_completado:
+        # Primera vez que completa el curso: avisar a su profesor (tras el commit).
+        al_confirmar(avisar_curso_completado, intento.curso, intento.usuario)
     return progreso, insignia_100_nueva
+
+
+def _finalizar(intento):
+    """Cierra el intento, arma el resultado y programa el correo de resultados."""
+    _, insignia_100_nueva = _cerrar_intento(intento)
+    resultado = _resultado(intento, insignia_100_nueva)
+    al_confirmar(enviar_resultados, intento.usuario, intento.curso, resultado)
+    return resultado
 
 
 @extend_schema(
@@ -392,10 +405,7 @@ def responder_evaluacion(request, slug):
 
     pregunta_id = intento.pregunta_actual_id()
     if pregunta_id is None:
-        _, insignia_100_nueva = _cerrar_intento(intento)
-        return Response(
-            {"finalizado": True, "resultado": _resultado(intento, insignia_100_nueva)},
-        )
+        return Response({"finalizado": True, "resultado": _finalizar(intento)})
 
     opcion_id = request.data.get("opcion_id")
     opcion = OpcionPregunta.objects.filter(
@@ -420,13 +430,12 @@ def responder_evaluacion(request, slug):
         intento.save()
 
         if finalizado:
-            _, insignia_100_nueva = _cerrar_intento(intento)
             return Response(
                 {
                     "correcta": True,
                     "mensaje": "Correcto.",
                     "finalizado": True,
-                    "resultado": _resultado(intento, insignia_100_nueva),
+                    "resultado": _finalizar(intento),
                 }
             )
 

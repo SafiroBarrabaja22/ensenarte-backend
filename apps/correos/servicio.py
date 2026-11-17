@@ -1,0 +1,178 @@
+"""
+Envio de correos transaccionales con plantilla HTML y version en texto plano.
+
+Reglas que exigen los clientes de correo (Gmail, Outlook, Apple Mail):
+- Maquetacion con tablas; nada de flexbox ni grid.
+- Estilos SOLO en linea (atributo style). Gmail elimina los <style>. Por eso
+  los colores se pasan a las plantillas como contexto (COLORES) y no como
+  variables CSS, que los clientes de correo tampoco entienden.
+- Ancho maximo de 600px.
+- El logo va incrustado como adjunto con Content-ID (cid:), no enlazado: muchos
+  clientes bloquean las imagenes remotas.
+
+Un correo nunca debe tumbar la operacion que lo dispara (registro, evaluacion):
+- Se programa con transaction.on_commit(): solo sale si la operacion se guardo.
+- Cualquier error de SMTP se registra en el log y se ignora.
+- EMAIL_TIMEOUT limita cuanto puede esperar el servidor SMTP.
+"""
+
+import logging
+from email.mime.image import MIMEImage
+from functools import partial, wraps
+
+import django
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.db import transaction
+from django.template.loader import render_to_string
+
+from config.marca import COLORES as MARCA_COLORES
+from config.marca import FUENTE_CORREO, RUTA_LOGO
+
+logger = logging.getLogger(__name__)
+
+CID_LOGO = "logo-ensenarte"
+
+# Colores y logo compartidos con los reportes: config/marca.py.
+COLORES = {**MARCA_COLORES, "fuente": FUENTE_CORREO}
+
+
+class CorreoConLogo(EmailMultiAlternatives):
+    """
+    EmailMultiAlternatives con el logo incrustado (Content-ID) junto al HTML.
+
+    Django 5.2 (requirements.txt) arma el mensaje con la API antigua de
+    email.mime: se usa mixed_subtype = "related" y un MIMEImage.
+    Django 6 usa la API moderna y ya no admite mixed_subtype: se convierte la
+    parte HTML en multipart/related con add_related(). En ambos casos el HTML
+    referencia la imagen como src="cid:logo-ensenarte".
+    """
+
+    API_MODERNA = django.VERSION >= (6, 0)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logo = RUTA_LOGO.read_bytes()
+        if not self.API_MODERNA:
+            self.mixed_subtype = "related"
+            imagen = MIMEImage(self.logo, _subtype="png")
+            imagen.add_header("Content-ID", f"<{CID_LOGO}>")
+            imagen.add_header("Content-Disposition", "inline", filename="logo.png")
+            self.attach(imagen)
+
+    def message(self, *args, **kwargs):
+        mensaje = super().message(*args, **kwargs)
+        if self.API_MODERNA:
+            html = next(
+                parte for parte in mensaje.walk() if parte.get_content_type() == "text/html"
+            )
+            html.add_related(
+                self.logo, maintype="image", subtype="png", cid=f"<{CID_LOGO}>",
+                disposition="inline", filename="logo.png",
+            )
+        return mensaje
+
+
+def construir(asunto, plantilla, contexto, destinatarios):
+    """Renderiza correos/<plantilla>.html y .txt y arma el mensaje."""
+    contexto = {
+        **contexto,
+        "asunto": asunto,
+        "c": COLORES,
+        "cid_logo": CID_LOGO,
+        "url_frontend": settings.URL_FRONTEND.rstrip("/"),
+    }
+    texto = render_to_string(f"correos/{plantilla}.txt", contexto)
+    html = render_to_string(f"correos/{plantilla}.html", contexto)
+    correo = CorreoConLogo(asunto, texto, settings.DEFAULT_FROM_EMAIL, destinatarios)
+    correo.attach_alternative(html, "text/html")
+    return correo
+
+
+def enviar(correo):
+    """Envia sin propagar errores: devuelve True si salio, False si fallo."""
+    try:
+        correo.send(fail_silently=False)
+    except Exception:  # SMTP caido, credenciales, timeout, DNS...
+        logger.exception("No se pudo enviar el correo %r a %s", correo.subject, correo.to)
+        return False
+    logger.info("Correo %r enviado a %s", correo.subject, correo.to)
+    return True
+
+
+def al_confirmar(funcion, *args):
+    """
+    Programa el envio para cuando la transaccion actual se confirme.
+    robust=True: si el callback fallara, Django lo registra y no lo propaga.
+    """
+    transaction.on_commit(partial(funcion, *args), robust=True)
+
+
+def sin_romper(funcion):
+    """
+    Un correo nunca rompe la operacion que lo dispara: cualquier error (datos
+    incompletos, plantilla, SMTP) queda en el log y la funcion devuelve False.
+    """
+    @wraps(funcion)
+    def envoltura(*args, **kwargs):
+        try:
+            return funcion(*args, **kwargs)
+        except Exception:
+            logger.exception("Fallo al preparar el correo %s", funcion.__name__)
+            return False
+    return envoltura
+
+
+# ---------------------------------------------------------------- Correos
+
+
+@sin_romper
+def enviar_bienvenida(usuario):
+    """1. Bienvenida al registrarse."""
+    if not usuario.email:
+        return False
+    correo = construir(
+        "Bienvenid@ a enSEÑArte",
+        "bienvenida",
+        {"nombre": usuario.username},
+        [usuario.email],
+    )
+    return enviar(correo)
+
+
+@sin_romper
+def enviar_resultados(usuario, curso, resultado):
+    """2. Resultados al terminar una evaluacion por preguntas."""
+    if not usuario.email:
+        return False
+    correo = construir(
+        f"Tus resultados en {curso.titulo}",
+        "resultados",
+        {
+            "nombre": usuario.username,
+            "curso": curso,
+            "aciertos": resultado["aciertos"],
+            "errores": resultado["errores"],
+            "total": resultado["total"],
+            "porcentaje": resultado["porcentaje"],
+            "mensaje": resultado["mensaje"],
+            "insignia_100": bool(resultado.get("insignia_100_nueva")),
+        },
+        [usuario.email],
+    )
+    return enviar(correo)
+
+
+@sin_romper
+def avisar_curso_completado(curso, estudiante):
+    """3. Aviso al profesor (creador del curso) cuando un estudiante lo completa."""
+    profesor = curso.creado_por if curso is not None else None
+    if profesor is None or not profesor.email or profesor.pk == estudiante.pk:
+        return False
+    correo = construir(
+        f"{estudiante.username} completó {curso.titulo}",
+        "curso_completado",
+        {"profesor": profesor.username, "estudiante": estudiante.username, "curso": curso},
+        [profesor.email],
+    )
+    return enviar(correo)

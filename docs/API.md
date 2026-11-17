@@ -8,8 +8,11 @@ Todas las respuestas son JSON con codificación UTF-8.
 
 La API usa JWT. Tras iniciar sesión se reciben dos tokens:
 
-- `access`: dura 60 minutos, se envía en cada petición protegida.
-- `refresh`: dura 7 días, sirve para pedir un `access` nuevo.
+- `access`: dura 15 minutos y se envía en cada petición protegida.
+- `refresh`: dura 7 días y sirve para pedir un `access` nuevo. Se rota: cada
+  uso devuelve un refresh nuevo e invalida el anterior.
+
+Detalles y razones en [SEGURIDAD.md](SEGURIDAD.md).
 
 Cabecera en peticiones protegidas:
 
@@ -89,7 +92,17 @@ Credenciales inválidas devuelven **401**.
 
 ## POST `/auth/refresh/`
 
-**Cuerpo:** `{ "refresh": "<token>" }` → **Respuesta:** `{ "access": "<token nuevo>" }`
+**Cuerpo:** `{ "refresh": "<token>" }` → **Respuesta:** `{ "access": "<token nuevo>", "refresh": "<token nuevo>" }`
+
+Hay que guardar los dos: el refresh enviado queda invalidado. Si se reutiliza,
+la respuesta es **401**.
+
+## POST `/auth/logout/`
+
+Público, porque el access puede haber vencido. **Cuerpo:** `{ "refresh": "<token>" }`
+→ **200** `{}`. Agrega el refresh a la lista negra, y a partir de ahí
+`/auth/refresh/` lo rechaza con 401. Un refresh inválido o ya cerrado
+devuelve 401.
 
 ## GET `/auth/perfil/`
 

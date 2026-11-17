@@ -7,8 +7,10 @@ Ver .env.example para la lista completa.
 
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -44,6 +46,9 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Terceros
     "rest_framework",
+    # Lista negra de refresh tokens: permite invalidarlos al cerrar sesion y
+    # al rotarlos. Sus tablas vienen en las migraciones del propio paquete.
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     # Propias
     "apps.usuarios",
@@ -118,9 +123,10 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": False,
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESO_MINUTOS", default=15)),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESCO_DIAS", default=7)),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
@@ -129,7 +135,43 @@ SIMPLE_JWT = {
 # CORS (el frontend vive en otro dominio/puerto)
 # ==========================================================
 
-CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
+# Explicacion en lenguaje llano: docs/SEGURIDAD.md.
+# La lista se lee SIEMPRE de la variable de entorno CORS_ALLOWED_ORIGINS
+# (separada por comas). El valor por defecto solo cubre desarrollo local; en
+# produccion debe incluir https://safirobarrabaja22.github.io (GitHub Pages).
+
+
+def validar_origenes_cors(origenes):
+    """
+    Detiene el arranque si la lista de origenes es peligrosa o esta mal escrita.
+
+    Un origen es esquema + dominio (+ puerto), sin ruta ni barra final:
+    "https://safirobarrabaja22.github.io", no ".../ensenarte-frontend/".
+    """
+    if not origenes:
+        raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS esta vacia.")
+    for origen in origenes:
+        if "*" in origen or origen.lower() == "null":
+            raise ImproperlyConfigured(
+                f"CORS_ALLOWED_ORIGINS no admite comodines ni 'null': {origen!r}"
+            )
+        partes = urlsplit(origen)
+        if partes.scheme not in ("http", "https") or not partes.netloc:
+            raise ImproperlyConfigured(f"Origen CORS invalido: {origen!r}")
+        if partes.path or partes.query or partes.fragment:
+            raise ImproperlyConfigured(
+                f"Origen CORS con ruta o barra final: {origen!r}. "
+                "Usa solo esquema y dominio, p. ej. https://safirobarrabaja22.github.io"
+            )
+    return origenes
+
+
+CORS_ALLOWED_ORIGINS = validar_origenes_cors(env("CORS_ALLOWED_ORIGINS"))
+# Nunca abrir a todos los origenes ni usar expresiones regulares.
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOWED_ORIGIN_REGEXES = []
+# La API usa JWT en la cabecera Authorization, no cookies: no hace falta que
+# el navegador envie credenciales entre origenes.
 CORS_ALLOW_CREDENTIALS = False
 
 

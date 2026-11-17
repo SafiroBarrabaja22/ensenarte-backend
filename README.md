@@ -141,7 +141,9 @@ cambios distintos, el último `contenido.json` reemplaza al anterior.
 | `SECRET_KEY` | Clave criptográfica de Django. Obligatoria. | `k3f8...` |
 | `DEBUG` | Modo desarrollo. En producción debe ser `False`. | `True` |
 | `ALLOWED_HOSTS` | Dominios autorizados, separados por coma. | `localhost,127.0.0.1` |
-| `CORS_ALLOWED_ORIGINS` | Orígenes del frontend autorizados. | `http://localhost:5500` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del frontend autorizados, separados por coma. Sin `*`, sin ruta ni barra final (si no, el backend no arranca). Ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md). | Desarrollo: `http://localhost:5500,http://127.0.0.1:5500` · Producción: `https://safirobarrabaja22.github.io` |
+| `JWT_ACCESO_MINUTOS` | Duración del token de acceso. Opcional. | `15` |
+| `JWT_REFRESCO_DIAS` | Duración del refresh token (se rota en cada uso). Opcional. | `7` |
 | `DATABASE_URL` | Cadena de conexión a la base de datos. | `sqlite:///db.sqlite3` |
 
 El archivo `.env` está en `.gitignore` y **nunca** debe subirse al repositorio.
@@ -296,7 +298,8 @@ curl http://127.0.0.1:8000/api/auth/perfil/ \
 
 1. `DEBUG=False` y `SECRET_KEY` real en las variables del proveedor.
 2. `ALLOWED_HOSTS` con el dominio del backend.
-3. `CORS_ALLOWED_ORIGINS` con el dominio del frontend.
+3. `CORS_ALLOWED_ORIGINS=https://safirobarrabaja22.github.io` (origen de GitHub
+   Pages, sin `/ensenarte-frontend/`).
 4. `DATABASE_URL` apuntando a PostgreSQL.
 5. `python manage.py migrate && python manage.py collectstatic --noinput`.
 6. Servir con `gunicorn config.wsgi:application`.

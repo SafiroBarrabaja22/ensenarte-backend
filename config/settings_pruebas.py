@@ -2,14 +2,17 @@
 Configuracion para la suite de pruebas (pytest y `manage.py test`).
 
 Nunca usa la base de datos de desarrollo: el .env local apunta a un MySQL
-compartido. Las variables se fijan ANTES de importar settings.py, y
+compartido. En la CI (.github/workflows/ci.yml) usa PostgreSQL. Las variables se fijan ANTES de importar settings.py, y
 django-environ no sobrescribe variables ya definidas.
 """
 
 import os
 import tempfile
 
-os.environ["DATABASE_URL"] = "sqlite://:memory:"
+# PRUEBAS_DATABASE_URL solo la define la CI (PostgreSQL de GitHub Actions).
+# En local no existe y se usa SQLite en memoria. Se usa otra variable a proposito:
+# un DATABASE_URL de desarrollo nunca debe terminar en las pruebas.
+os.environ["DATABASE_URL"] = os.environ.get("PRUEBAS_DATABASE_URL", "sqlite://:memory:")
 
 os.environ.setdefault("SECRET_KEY", "clave-solo-para-pruebas-no-usar-en-produccion")
 # Con DEBUG=False settings.py activa SECURE_SSL_REDIRECT y el cliente de pruebas

@@ -1,5 +1,7 @@
 # enSEÑArte — Backend (API + Base de datos)
 
+[![CI](https://github.com/SafiroBarrabaja22/ensenarte-backend/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SafiroBarrabaja22/ensenarte-backend/actions/workflows/ci.yml)
+
 API REST del aplicativo de aprendizaje de Lengua de Señas Colombiana (LSC).
 Expone el catálogo de cursos, el diccionario visual, el motor de evaluaciones y
 el panel administrativo. No renderiza ninguna interfaz: el cliente vive en el
@@ -319,6 +321,37 @@ pytest                                # corre todo y mide cobertura
 | `tests/test_permisos.py` | Por cada rol, endpoints de otros roles a los que **no** puede entrar (403) |
 | `tests/test_comandos.py` | `poblar_datos`, `exportar_contenido`, `cargar_contenido`, `otorgar_insignias_curso_100` |
 | `apps/*/tests*.py` | Roles por objeto, JWT/CORS, documentación OpenAPI y cálculo de la evaluación con cámara |
+
+### Integración continua (GitHub Actions)
+
+El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre en cada
+push y en cada pull request, en `main` y en cualquier rama de trabajo. Hace esto:
+
+1. Levanta Python 3.12 y un servicio PostgreSQL 16.
+2. Instala `requirements-dev.txt` con caché de pip.
+3. Corre `manage.py check` y `makemigrations --check`: falla si alguien cambió
+   un modelo sin generar su migración.
+4. Corre `pytest` con cobertura, y falla si baja de **70 %**.
+5. Publica el reporte HTML como artifact `reporte-cobertura-html` (14 días).
+   Se descarga desde la pestaña *Actions* → la ejecución → *Artifacts*, y se
+   publica incluso cuando la cobertura no alcanza.
+
+La insignia de arriba muestra el estado en `main`.
+
+**Secrets que hay que crear una sola vez** en GitHub (*Settings → Secrets and
+variables → Actions → New repository secret*). Son solo para la base temporal
+de la CI; no uses los de producción:
+
+| Secret | Valor sugerido |
+|---|---|
+| `CI_SECRET_KEY` | Una clave aleatoria de 50 caracteres: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
+| `CI_POSTGRES_USER` | `ensenarte_ci` |
+| `CI_POSTGRES_PASSWORD` | Una clave aleatoria de **solo letras y números** (va dentro de una URL) |
+| `CI_POSTGRES_DB` | `ensenarte_ci` |
+
+Si falta alguno, el primer paso del workflow falla y dice cuál. GitHub no
+entrega secrets a los pull requests que vienen de *forks*, así que en esos PR
+la CI falla en ese primer paso.
 
 ## Pruebas rápidas con curl
 

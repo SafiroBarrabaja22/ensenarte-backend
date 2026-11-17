@@ -11,7 +11,7 @@ repositorio [`ensenarte-frontend`](../ensenarte-frontend).
 |---|---|
 | **Framework** | Django 5.2 + Django REST Framework |
 | **Autenticación** | JWT (SimpleJWT) |
-| **Base de datos** | SQLite en desarrollo, PostgreSQL en producción |
+| **Base de datos** | MySQL (producción y equipo); SQLite en memoria para las pruebas |
 | **Puerto por defecto** | `http://127.0.0.1:8000` |
 
 ---
@@ -327,7 +327,8 @@ pytest                                # corre todo y mide cobertura
 El workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) corre en cada
 push y en cada pull request, en `main` y en cualquier rama de trabajo. Hace esto:
 
-1. Levanta Python 3.12 y un servicio PostgreSQL 16.
+1. Levanta Python 3.12. No usa ningún servidor de base de datos: las pruebas
+   corren sobre **SQLite en memoria**, igual que en local.
 2. Instala `requirements-dev.txt` con caché de pip.
 3. Corre `manage.py check` y `makemigrations --check`: falla si alguien cambió
    un modelo sin generar su migración.
@@ -338,26 +339,31 @@ push y en cada pull request, en `main` y en cualquier rama de trabajo. Hace esto
 
 La insignia de arriba muestra el estado en `main`.
 
-**Secrets que hay que crear una sola vez** en GitHub (*Settings → Secrets and
-variables → Actions → New repository secret*). Son solo para la base temporal
-de la CI; no uses los de producción:
+**Secret que hay que crear una sola vez** en GitHub (*Settings → Secrets and
+variables → Actions → New repository secret*). Es solo para la CI; no uses la
+clave de producción:
 
 | Secret | Valor sugerido |
 |---|---|
 | `CI_SECRET_KEY` | Una clave aleatoria de 50 caracteres: `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` |
-| `CI_POSTGRES_USER` | `ensenarte_ci` |
-| `CI_POSTGRES_PASSWORD` | Una clave aleatoria de **solo letras y números** (va dentro de una URL) |
-| `CI_POSTGRES_DB` | `ensenarte_ci` |
 
-Si falta alguno, el primer paso del workflow falla y dice cuál. GitHub no
+Si falta, el primer paso del workflow falla y lo dice. GitHub no
 entrega secrets a los pull requests que vienen de *forks*, así que en esos PR
 la CI falla en ese primer paso.
 
 ### Pruebas de las reglas en MySQL
 
-Los triggers y procedimientos (migraciones `cursos/0011` y `0012`) solo existen
-en MySQL. Sus pruebas se saltan en SQLite y en la CI. Para correrlas contra el
-servidor MySQL de pruebas:
+Los triggers y procedimientos almacenados (migraciones `cursos/0011` y `0012`)
+solo existen en MySQL: en SQLite esas migraciones no ejecutan nada. Por eso sus
+pruebas **se saltan en local y en la CI**, que corren sobre SQLite en memoria:
+
+- `tests/test_reglas_mysql.py`: las 39 pruebas de triggers y procedimientos.
+- `tests/test_reportes.py`: 1 prueba del reporte de estadísticas de la
+  plataforma, que usa los procedimientos.
+
+Por eso `pytest` muestra "40 skipped" y la CI pasa en verde sin haberlas
+ejecutado. **Antes de subir cambios a los triggers, los procedimientos o el
+código que los usa, córrelas a mano** contra el servidor MySQL de pruebas:
 
 ```bash
 # PowerShell: $env:PRUEBAS_DATABASE_URL = "mysql://usuario:clave@host:3306/proyecto_pruebas"
@@ -365,7 +371,15 @@ PRUEBAS_DATABASE_URL="mysql://usuario:clave@host:3306/proyecto_pruebas" pytest
 ```
 
 Django crea `test_proyecto_pruebas`, le aplica todas las migraciones, corre la
-suite y la borra; `proyecto_pruebas` no se toca. Nunca uses `proyecto_v2`.
+suite y la borra; `proyecto_pruebas` no se toca. Nunca uses `proyecto_v2`
+(`config/settings_pruebas.py` se niega a correr contra ella).
+
+Para correr solo las pruebas que dependen de MySQL (más rápido; `--no-cov`
+porque solas no llegan al 70 %):
+
+```bash
+PRUEBAS_DATABASE_URL="mysql://usuario:clave@host:3306/proyecto_pruebas"   pytest tests/test_reglas_mysql.py tests/test_reportes.py --no-cov
+```
 
 ---
 
@@ -474,13 +488,11 @@ curl http://127.0.0.1:8000/api/auth/perfil/ \
 
 ## Despliegue
 
-1. `DEBUG=False` y `SECRET_KEY` real en las variables del proveedor.
-2. `ALLOWED_HOSTS` con el dominio del backend.
-3. `CORS_ALLOWED_ORIGINS=https://safirobarrabaja22.github.io` (origen de GitHub
-   Pages, sin `/ensenarte-frontend/`).
-4. `DATABASE_URL` apuntando a PostgreSQL.
-5. `python manage.py migrate && python manage.py collectstatic --noinput`.
-6. Servir con `gunicorn config.wsgi:application`.
+Backend en una miniPC con Arch Linux (gunicorn como servicio de systemd,
+MySQL local y Tailscale Funnel) y frontend en GitHub Pages. Pasos exactos y
+lista completa de variables del `.env` de producción en
+[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). Para actualizar:
+`sudo bash despliegue/desplegar.sh`.
 
 ---
 

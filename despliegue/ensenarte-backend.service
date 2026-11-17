@@ -1,0 +1,61 @@
+# Servicio de systemd del backend de enSEÑArte (gunicorn).
+# Pasos de instalacion en docs/DESPLIEGUE.md. Resumen:
+#   sudo cp despliegue/ensenarte-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ensenarte-backend
+#
+# Si el proyecto no esta en /srv/ensenarte/ensenarte-backend o el usuario no se
+# llama "ensenarte", ajusta User, Group, WorkingDirectory, ExecStart y
+# ReadWritePaths. Este archivo no lleva secretos: Django lee el .env por su cuenta.
+
+[Unit]
+Description=enSEÑArte backend (Django + gunicorn)
+Documentation=https://github.com/SafiroBarrabaja22/ensenarte-backend/blob/main/docs/DESPLIEGUE.md
+# Arranca despues de la red y de la base de datos (en Arch el servicio se llama
+# mariadb.service si es MariaDB, o mysqld.service si es MySQL; nombrar uno que
+# no existe no causa error).
+After=network-online.target mariadb.service mysqld.service
+Wants=network-online.target
+
+[Service]
+# gunicorn avisa a systemd cuando ya acepta conexiones.
+Type=notify
+NotifyAccess=main
+User=ensenarte
+Group=ensenarte
+WorkingDirectory=/srv/ensenarte/ensenarte-backend
+# Solo escucha en 127.0.0.1: desde fuera se entra unicamente por Tailscale
+# Funnel. Esto es lo que hace seguro confiar en X-Forwarded-Proto (settings.py).
+# --timeout 60: los reportes PDF/Excel grandes pueden tardar varios segundos.
+ExecStart=/srv/ensenarte/ensenarte-backend/.venv/bin/gunicorn config.wsgi:application \
+    --bind 127.0.0.1:8000 \
+    --workers 3 \
+    --timeout 60 \
+    --access-logfile - \
+    --error-logfile -
+# `systemctl reload ensenarte-backend` recarga el codigo sin cortar conexiones.
+ExecReload=/bin/kill -s HUP $MAINPID
+KillMode=mixed
+TimeoutStopSec=30
+
+# Reinicio automatico si el proceso muere, con espera de 5 s entre intentos.
+Restart=always
+RestartSec=5
+# Si falla 5 veces en 2 minutos, systemd deja de insistir (ver journalctl).
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+# Endurecimiento: el proceso no puede escribir fuera de media/ ni ganar privilegios.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/srv/ensenarte/ensenarte-backend/media
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

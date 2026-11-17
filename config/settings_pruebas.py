@@ -2,16 +2,18 @@
 Configuracion para la suite de pruebas (pytest y `manage.py test`).
 
 Nunca usa la base de datos de desarrollo: el .env local apunta a un MySQL
-compartido. En la CI (.github/workflows/ci.yml) usa PostgreSQL. Las variables se fijan ANTES de importar settings.py, y
+compartido. En local y en la CI (.github/workflows/ci.yml) usa SQLite en
+memoria. Las variables se fijan ANTES de importar settings.py, y
 django-environ no sobrescribe variables ya definidas.
 """
 
 import os
 import tempfile
 
-# PRUEBAS_DATABASE_URL solo la define la CI (PostgreSQL de GitHub Actions).
-# En local no existe y se usa SQLite en memoria. Se usa otra variable a proposito:
-# un DATABASE_URL de desarrollo nunca debe terminar en las pruebas.
+# Sin PRUEBAS_DATABASE_URL (lo normal, tambien en la CI) se usa SQLite en memoria.
+# Se define a mano solo para correr las pruebas de triggers y procedimientos
+# contra MySQL (proyecto_pruebas; ver README). Es otra variable a proposito: un
+# DATABASE_URL de desarrollo nunca debe terminar en las pruebas.
 os.environ["DATABASE_URL"] = os.environ.get("PRUEBAS_DATABASE_URL", "sqlite://:memory:")
 
 # Bases compartidas a las que las pruebas NUNCA deben conectarse (Django crearia
@@ -40,3 +42,12 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 # Las subidas (gifs, imagenes) van a una carpeta temporal, no a media/.
 MEDIA_ROOT = tempfile.mkdtemp(prefix="ensenarte-pruebas-media-")
+
+# El almacenamiento de produccion (WhiteNoise con manifiesto) exige correr
+# collectstatic antes; en las pruebas basta el almacenamiento normal.
+STORAGES = {
+    **STORAGES,  # noqa: F405
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+# WhiteNoise avisa si STATIC_ROOT no existe (en local nadie corre collectstatic).
+STATIC_ROOT = tempfile.mkdtemp(prefix="ensenarte-pruebas-static-")

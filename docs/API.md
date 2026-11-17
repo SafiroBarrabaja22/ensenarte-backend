@@ -287,29 +287,28 @@ una evaluación de ese curso.
 Escala de mensajes: 0 errores → felicitación; hasta 15 → ánimo; hasta 30 →
 "la práctica hace al maestro"; más de 30 → sugiere repasar el diccionario.
 
----
-
-Updated upstream
-# 4. Panel administrativo
-=======
-# Historial de intentos por curso
-
 ## GET `/cursos/<slug>/evaluacion/historial/`
 
 Autenticado. Devuelve como máximo los cinco intentos finalizados más recientes
-del usuario para ese curso, ordenados del más antiguo al más reciente. Cada
-elemento incluye `aciertos`, `errores`, `total` de preguntas y `fecha`. Los
-intentos anteriores se eliminan al finalizar un sexto intento.
+del usuario para ese curso, ordenados del más antiguo al más reciente. Al
+cerrar un sexto intento se borra el más antiguo.
+
+```json
+[
+  { "id": 14, "aciertos": 7, "errores": 3, "total": 10, "fecha": "2026-11-16T15:10:00-05:00" },
+  { "id": 15, "aciertos": 9, "errores": 1, "total": 10, "fecha": "2026-11-16T15:30:00-05:00" }
+]
+```
 
 ---
 
 # 4. Evaluación con cámara
 
 El usuario hace con la mano letras del abecedario frente a la cámara y el
-**navegador** las reconoce (MediaPipe + KNN, ver [`ml/README.md`](../ml/README.md)).
-El video nunca llega al servidor: al terminar la sesión el frontend envía todos
-los intentos en una sola petición. Es independiente de la evaluación por curso
-de la sección 3.
+**navegador** las reconoce (MediaPipe + un modelo KNN que el frontend carga de
+`assets/modelos/modelo_knn.json`). El video nunca llega al servidor: al
+terminar la sesión el frontend envía todos los intentos en una sola petición.
+Es independiente de la evaluación por preguntas de la sección 3.
 
 ## POST `/evaluacion-camara/`
 
@@ -327,7 +326,7 @@ Autenticado. Guarda una sesión y devuelve el resultado calculado por el servido
 
 | Campo | Regla |
 |---|---|
-| `curso` | Slug del curso de la sesión, obligatorio; el historial y la insignia se vinculan a este curso. |
+| `curso` | Slug de un curso activo. Se debe enviar; acepta `null` para una sesión sin curso. El historial y la insignia se vinculan a este curso. |
 | `intentos` | Obligatorio, entre 1 y 50 elementos (`EVALUACION_CAMARA_MAX_INTENTOS`) |
 | `letra_objetivo` | 1 o 2 caracteres; se recortan espacios y se guarda en mayúscula (`"ll"` → `"LL"`) |
 | `acerto` | Booleano, obligatorio |
@@ -343,12 +342,14 @@ calcula el servidor**. Si el cliente los envía se ignoran (son de solo lectura)
 - `umbral_aplicado` = umbral vigente al guardar. Por defecto 70; se cambia con
   la variable de entorno `EVALUACION_CAMARA_UMBRAL_APROBACION`.
 
-Así, 7/10 aprueba y 6/10 no. Respuesta **201**:
+Así, 7/10 aprueba y 6/10 no. Aprobar marca el curso como completado (y suma
+una estrella); un 100 % gana la insignia Curso 100 %. Respuesta **201**:
 
 ```json
 {
   "id": 12,
   "fecha": "2026-10-10T15:54:17.596285-05:00",
+  "curso": "abecedario",
   "total": 10,
   "correctas": 7,
   "porcentaje": 70,
@@ -356,7 +357,10 @@ Así, 7/10 aprueba y 6/10 no. Respuesta **201**:
   "umbral_aplicado": 70,
   "intentos": [
     { "letra_objetivo": "A", "acerto": true, "tiempo_ms": 2300, "confianza": 0.8 }
-  ]
+  ],
+  "insignia_100_ganada": false,
+  "insignia_100_nueva": false,
+  "insignia_100": null
 }
 ```
 
@@ -374,12 +378,15 @@ se guarda nada si un solo intento es inválido:
 
 ## GET `/evaluacion-camara/?curso=<slug>`
 
-Autenticado. Historial de sesiones **del usuario autenticado y del curso
-indicado** (nunca las de otros usuarios), de la más reciente a la más antigua,
-paginado y limitado a cinco sesiones por curso. Una sesión perfecta establece
-permanentemente `insignia_100_ganada` en el progreso del usuario. El recurso
-configurado como insignia `curso_100` reemplaza la insignia de curso completado
-en el perfil.
+Autenticado. Historial de sesiones **del usuario autenticado** (nunca las de
+otros usuarios), de la más reciente a la más antigua, paginado y con un máximo
+de cinco sesiones. `?curso=` es opcional: con él solo trae las de ese curso;
+sin él, las cinco más recientes de cualquier curso. Por cada usuario y curso se
+conservan solo las cinco sesiones más recientes.
+
+Una sesión perfecta deja `insignia_100_ganada` en `true` de forma permanente en
+el progreso del usuario. El recurso configurado como insignia `curso_100`
+reemplaza la insignia de curso completado en el perfil.
 
 ```json
 {
@@ -387,8 +394,8 @@ en el perfil.
   "next": null,
   "previous": null,
   "results": [
-    { "id": 12, "fecha": "...", "total": 10, "correctas": 7, "porcentaje": 70,
-      "aprobado": true, "umbral_aplicado": 70, "intentos": [ ... ] }
+    { "id": 12, "fecha": "...", "curso": "abecedario", "total": 10, "correctas": 7,
+      "porcentaje": 70, "aprobado": true, "umbral_aplicado": 70, "intentos": [ ... ] }
   ]
 }
 ```
@@ -396,7 +403,6 @@ en el perfil.
 ---
 
 # 5. Panel administrativo
->>>>>>> Stashed changes
 
 Todo bajo `/panel/` exige autenticación y un rol (grupo de Django). Sin el
 rol necesario devuelve **403** con `detail` explicando el motivo. La tabla

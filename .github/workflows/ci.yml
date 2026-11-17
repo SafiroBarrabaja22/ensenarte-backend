@@ -1,15 +1,16 @@
 # Integracion continua del backend de enSEÑArte.
 #
-# En cada push y pull request: Python 3.12 + PostgreSQL, dependencias con cache,
-# migraciones al dia, suite completa con cobertura minima de 70 % y reporte HTML
-# descargable como artifact.
+# En cada push y pull request: Python 3.12, dependencias con cache, migraciones
+# al dia, suite completa con cobertura minima de 70 % y reporte HTML descargable
+# como artifact.
 #
-# Secrets requeridos (Settings -> Secrets and variables -> Actions):
-#   CI_SECRET_KEY         Clave de Django solo para la CI (no la de produccion).
-#   CI_POSTGRES_USER      Usuario del PostgreSQL temporal de la CI.
-#   CI_POSTGRES_PASSWORD  Contrasena de ese usuario (solo letras y numeros: va en una URL).
-#   CI_POSTGRES_DB        Nombre de la base.
-# La base vive solo durante la ejecucion; ninguno de estos valores es de produccion.
+# Las pruebas corren sobre SQLite en memoria, igual que en local
+# (config/settings_pruebas.py). Las de triggers y procedimientos almacenados
+# solo corren contra MySQL y aqui se saltan: ver README, "Pruebas de las reglas
+# en MySQL".
+#
+# Secret requerido (Settings -> Secrets and variables -> Actions):
+#   CI_SECRET_KEY   Clave de Django solo para la CI (no la de produccion).
 
 name: CI
 
@@ -29,54 +30,30 @@ permissions:
 
 jobs:
   pruebas:
-    name: Pruebas y cobertura (Python 3.12 + PostgreSQL)
+    name: Pruebas y cobertura (Python 3.12)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: ${{ secrets.CI_POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
-          POSTGRES_DB: ${{ secrets.CI_POSTGRES_DB }}
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
 
     env:
       DJANGO_SETTINGS_MODULE: config.settings_pruebas
       SECRET_KEY: ${{ secrets.CI_SECRET_KEY }}
-      PRUEBAS_DATABASE_URL: postgres://${{ secrets.CI_POSTGRES_USER }}:${{ secrets.CI_POSTGRES_PASSWORD }}@localhost:5432/${{ secrets.CI_POSTGRES_DB }}
       PYTHONIOENCODING: utf-8
 
     steps:
-      - name: Verificar que los secrets existan
+      - name: Verificar que el secret exista
         env:
           TIENE_SECRET_KEY: ${{ secrets.CI_SECRET_KEY != '' }}
-          TIENE_USUARIO: ${{ secrets.CI_POSTGRES_USER != '' }}
-          TIENE_CLAVE: ${{ secrets.CI_POSTGRES_PASSWORD != '' }}
-          TIENE_BASE: ${{ secrets.CI_POSTGRES_DB != '' }}
         run: |
-          faltan=""
-          [ "$TIENE_SECRET_KEY" = "true" ] || faltan="$faltan CI_SECRET_KEY"
-          [ "$TIENE_USUARIO" = "true" ] || faltan="$faltan CI_POSTGRES_USER"
-          [ "$TIENE_CLAVE" = "true" ] || faltan="$faltan CI_POSTGRES_PASSWORD"
-          [ "$TIENE_BASE" = "true" ] || faltan="$faltan CI_POSTGRES_DB"
-          if [ -n "$faltan" ]; then
-            echo "::error::Faltan secrets del repositorio:$faltan. Ver README, seccion Integracion continua."
+          if [ "$TIENE_SECRET_KEY" != "true" ]; then
+            echo "::error::Falta el secret CI_SECRET_KEY. Ver README, seccion Integracion continua."
             exit 1
           fi
 
       - name: Descargar el codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Instalar Python 3.12 (con cache de pip)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
@@ -84,6 +61,8 @@ jobs:
             requirements.txt
             requirements-dev.txt
 
+      # mysqlclient esta en requirements.txt y se compila al instalarlo, aunque
+      # las pruebas no usen MySQL.
       - name: Instalar librerias del sistema (mysqlclient se compila)
         run: |
           sudo apt-get update
@@ -106,7 +85,7 @@ jobs:
 
       - name: Publicar el reporte HTML de cobertura
         if: always()   # tambien cuando la cobertura no alcanza, para ver que falta
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: reporte-cobertura-html
           path: htmlcov/

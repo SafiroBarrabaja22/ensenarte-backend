@@ -21,6 +21,7 @@ Versiones fijadas en [requirements.txt](requirements.txt):
 | mysqlclient | 2.3.0 |
 | psycopg2-binary | 2.9.9 |
 | gunicorn | 22.0.0 |
+| whitenoise | 6.9.0 |
 
 > **Ojo: el `.venv` local NO coincide con requirements.txt.** Hoy tiene
 > instalados Python 3.14.0, Django 6.1.1, DRF 3.18.1, simplejwt 5.5.1,
@@ -30,7 +31,7 @@ Versiones fijadas en [requirements.txt](requirements.txt):
 > requirements.txt sin que el equipo lo decida.
 
 - Base de datos: `DATABASE_URL` (django-environ). SQLite por defecto
-  (`db.sqlite3`, ignorado en git); PostgreSQL en producción.
+  (`db.sqlite3`, ignorado en git); MySQL en producción (docs/DESPLIEGUE.md).
 - Idioma/zona: `LANGUAGE_CODE = "es-co"`, `TIME_ZONE = "America/Bogota"`, `USE_TZ = True`.
 - Paginación global: `PageNumberPagination`, `PAGE_SIZE = 50`
   (algunas vistas del panel la desactivan, ver abajo).
@@ -77,7 +78,8 @@ ensenarte-backend/
 │   │   ├── fixtures/contenido.json   Contenido compartido del equipo
 │   │   └── management/commands/
 │   └── evaluacion_camara/ Sesiones de evaluación con cámara (sin urls.py propio; se monta en config/urls.py)
-├── docs/                 API.md, MODELO_DATOS.md, diagramas/ (.puml/.png/.svg)
+├── despliegue/          Servicio systemd, desplegar.sh y respaldar_bd.py (ver docs/DESPLIEGUE.md)
+├── docs/                 API.md, MODELO_DATOS.md, SEGURIDAD.md, DESPLIEGUE.md, diagramas/
 ├── media/                Subidas. En git solo media/biblioteca/ y media/contenido/
 └── ml/                   Datos/experimentos del modelo KNN (no versionado hoy)
 ```
@@ -185,7 +187,9 @@ Las rutas de aprendizaje (`diccionario`, `progreso`, `evaluacion/*`,
 `evaluacion-camara/`) exigen `PUEDE_APRENDER`, es decir, cualquier rol: un
 usuario autenticado sin rol recibe 403.
 
-Además: `/admin/` (admin de Django) y `/media/` servido solo con `DEBUG=True`.
+Además: `/admin/` (admin de Django) y `/media/`, servido por `config/media.py` en desarrollo y en
+producción (`SERVIR_MEDIA`, con `Content-Security-Policy: sandbox` para que un archivo subido no
+ejecute código en el dominio del admin).
 
 ### Documentación OpenAPI (drf-spectacular 0.30.0)
 
@@ -299,14 +303,24 @@ Explicación en lenguaje llano: [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 - No commitear `.env`, `db.sqlite3`, `db.sqlite3.backup-*`, ni `media/` fuera de
   `biblioteca/` y `contenido/`.
 
+## Despliegue
+
+Guía completa en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). Backend en una miniPC Arch
+(`/srv/ensenarte/ensenarte-backend`, usuario `ensenarte`, Python 3.12 con `uv`), gunicorn en
+`127.0.0.1:8000` como servicio systemd y Tailscale Funnel en `https://cachyos-x8664.tailb93c3e.ts.net`.
+MySQL en la misma máquina (`localhost`). WhiteNoise sirve `/static/` (`CompressedManifestStaticFilesStorage`:
+exige `collectstatic`; `settings_pruebas.py` usa el almacenamiento normal). Con `DEBUG=False` los logs
+van a la salida estándar (journal). Actualizar: `sudo bash despliegue/desplegar.sh`.
+Pruebas de esta configuración: [tests/test_despliegue.py](tests/test_despliegue.py).
+
 ## Integración continua
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) corre en cada push y PR (todas las ramas):
-Python 3.12 + PostgreSQL 16, `check`, `makemigrations --check`, `pytest` (umbral 70 %) y sube
-`htmlcov/` como artifact. La base de pruebas llega por `PRUEBAS_DATABASE_URL`, que solo define
-la CI (`config/settings_pruebas.py`; en local es SQLite en memoria). Todos los valores
-sensibles vienen de los secrets `CI_SECRET_KEY`, `CI_POSTGRES_USER`, `CI_POSTGRES_PASSWORD` y
-`CI_POSTGRES_DB`; nunca escribir valores en el YAML. Si cambias un modelo, genera y commitea
+Python 3.12, `check`, `makemigrations --check`, `pytest` (umbral 70 %) y sube `htmlcov/` como
+artifact (`actions/*@v7`, Node 24). Sin servidor de base de datos: SQLite en memoria, igual que
+en local, así que las 40 pruebas que necesitan MySQL (triggers, procedimientos y el reporte de
+plataforma) se saltan; córrelas a mano con `PRUEBAS_DATABASE_URL` (README). Único secret:
+`CI_SECRET_KEY`; nunca escribir valores en el YAML. Si cambias un modelo, genera y commitea
 la migración o la CI falla.
 
 ## Reglas en la base de datos (MySQL)
@@ -314,7 +328,7 @@ la migración o la CI falla.
 Migraciones de `cursos`: `0010_auditoria_curso` (modelo `AuditoriaCurso`, normal),
 `0011_procedimientos_mysql` (solo procedimientos) y `0012_triggers_mysql` (solo triggers).
 Usan `RunSQLSoloMySQL` ([apps/cursos/operaciones_mysql.py](apps/cursos/operaciones_mysql.py)):
-en SQLite (pruebas locales) y PostgreSQL (CI) no ejecutan nada.
+en SQLite (pruebas en local y en la CI) y PostgreSQL no ejecutan nada.
 
 - **Al escribir SQL de MySQL en migraciones:** una sentencia por elemento de la lista `sql`
   (sin `DELIMITER`), sin `DEFINER`, `SIGNAL SQLSTATE '45000'`, `JSON` y `UTC_TIMESTAMP(6)`.
@@ -330,6 +344,9 @@ en SQLite (pruebas locales) y PostgreSQL (CI) no ejecutan nada.
 - **Opción correcta:** MySQL no deja que un trigger modifique su propia tabla (error 1442).
   El trigger RECHAZA la segunda correcta y, para cambiar la correcta, se usa siempre
   `marcar_opcion_correcta()`, como hace el panel. No marques una opción con `save()`.
+  Excepción: el inline del admin (`OpcionInlineFormSet` en `apps/cursos/admin.py`) valida
+  antes (máx. 1 correcta y 4 opciones) y `PreguntaAdmin.save_formset` guarda borrados,
+  luego no correctas y al final la correcta, para que el trigger no salte en cambios válidos.
 - **Auditoría:** para que registre el usuario de la aplicación, envuelve los cambios
   de cursos en `with usuario_auditoria(request.user):`.
 - **Pruebas:** [tests/test_reglas_mysql.py](tests/test_reglas_mysql.py) solo corren contra MySQL:

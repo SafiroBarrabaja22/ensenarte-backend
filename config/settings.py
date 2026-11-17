@@ -63,6 +63,9 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    # Sirve /static/ (estaticos del admin, DRF y drf-spectacular) desde
+    # gunicorn, sin servidor web aparte. Va justo despues de SecurityMiddleware.
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -225,6 +228,14 @@ def validar_origenes_cors(origenes):
 
 
 CORS_ALLOWED_ORIGINS = validar_origenes_cors(env("CORS_ALLOWED_ORIGINS"))
+
+# Origenes desde los que se aceptan formularios con cookie de sesion: solo el
+# admin de Django (/admin/) los usa; la API va con JWT y no depende de CSRF.
+# En produccion: el dominio .ts.net del backend, p. ej.
+# CSRF_TRUSTED_ORIGINS=https://cachyos-x8664.tailb93c3e.ts.net
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
+if CSRF_TRUSTED_ORIGINS:
+    validar_origenes_cors(CSRF_TRUSTED_ORIGINS)  # mismas reglas: sin "*", sin ruta
 # Nunca abrir a todos los origenes ni usar expresiones regulares.
 CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOWED_ORIGIN_REGEXES = []
@@ -287,10 +298,24 @@ USE_TZ = True
 # que sube el usuario (fotos de perfil) y los estaticos del admin de Django.
 
 STATIC_URL = "static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "staticfiles"   # lo llena `collectstatic`; WhiteNoise lo sirve
 
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    # Nombres con hash y archivos comprimidos: el navegador los cachea sin
+    # riesgo de quedarse con una version vieja. Exige correr collectstatic.
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+}
+
+# MEDIA_ROOT queda DENTRO del repositorio a proposito: media/biblioteca/ y
+# media/contenido/ estan versionados y llegan con `git pull`.
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
+# Con DEBUG=True Django sirve /media/ como siempre. En produccion no hay otro
+# servidor web (Tailscale Funnel -> gunicorn), asi que lo sirve Django con
+# config/media.py, que agrega cabeceras para que un archivo subido no pueda
+# ejecutar codigo en este dominio. SERVIR_MEDIA=False si otro servidor lo hace.
+SERVIR_MEDIA = env.bool("SERVIR_MEDIA", default=True)
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -300,9 +325,40 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ==========================================================
 
 if not DEBUG:
+    # Tailscale Funnel termina el HTTPS y reenvia a gunicorn por http en
+    # 127.0.0.1, agregando X-Forwarded-Proto: https. Confiar en esa cabecera
+    # es seguro solo porque gunicorn escucha en 127.0.0.1 (nadie de fuera
+    # puede hablarle directo). Ver docs/DESPLIEGUE.md.
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+
+# ==========================================================
+# REGISTRO (LOGS)
+# ==========================================================
+# Con DEBUG=False Django no imprime los errores 500 en ningun lado (solo los
+# enviaria por correo a ADMINS, que no se usa). Aqui se mandan a la salida
+# estandar, que systemd guarda en el journal: journalctl -u ensenarte-backend.
+# Con DEBUG=True se deja la configuracion de Django tal cual (runserver ya
+# los muestra).
+
+if not DEBUG:
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "simple": {"format": "{levelname} {name}: {message}", "style": "{"},
+        },
+        "handlers": {
+            "consola": {"class": "logging.StreamHandler", "formatter": "simple"},
+        },
+        "root": {"handlers": ["consola"], "level": env("NIVEL_LOG", default="WARNING")},
+        "loggers": {
+            # Los 4xx (401 por token vencido, 404...) son normales: solo los 5xx.
+            "django.request": {"level": "ERROR"},
+        },
+    }

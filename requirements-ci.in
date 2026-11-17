@@ -1,0 +1,12 @@
+# Entrada de requirements-ci.txt: lo que instala la CI, con versiones exactas y
+# hashes (pip install --require-hashes --only-binary :all:). Para regenerarlo
+# despues de cambiar requirements.txt o requirements-dev.txt:
+#
+#   uv pip compile requirements-ci.in --universal --python-version 3.12 \
+#       --generate-hashes --no-emit-package mysqlclient -o requirements-ci.txt
+#
+# mysqlclient queda fuera: no hay paquete precompilado para Linux y la CI usa
+# SQLite. pip-audit lo sigue revisando desde requirements.txt.
+-r requirements-dev.txt
+pip-audit==2.10.1
+pip==26.3

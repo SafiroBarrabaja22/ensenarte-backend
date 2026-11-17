@@ -11,7 +11,8 @@
 # Variables opcionales (con su valor por defecto):
 #   DIR_APP=/srv/ensenarte/ensenarte-backend   USUARIO_APP=ensenarte
 #   SERVICIO=ensenarte-backend   RAMA=main   PUERTO=8000
-#   DIR_RESPALDOS=/srv/ensenarte/respaldos   RESPALDAR=1 (0 = sin respaldo)
+#   RESPALDAR=1 (0 = sin respaldo). Los respaldos van a la carpeta "respaldos"
+#   junto al proyecto (/srv/ensenarte/respaldos); ver respaldar_bd.py.
 #
 # Todo va dentro de main(): bash lee el archivo completo antes de ejecutarlo,
 # asi que el `git pull` puede cambiar este mismo script sin romper la ejecucion.
@@ -24,7 +25,8 @@ main() {
     local SERVICIO="${SERVICIO:-ensenarte-backend}"
     local RAMA="${RAMA:-main}"
     local PUERTO="${PUERTO:-8000}"
-    local DIR_RESPALDOS="${DIR_RESPALDOS:-/srv/ensenarte/respaldos}"
+    local DIR_RESPALDOS
+    DIR_RESPALDOS="$(dirname "$DIR_APP")/respaldos"   # fijo: respaldar_bd.py escribe ahi
     local RESPALDAR="${RESPALDAR:-1}"
 
     paso() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
@@ -71,7 +73,7 @@ main() {
         manage showmigrations --plan | grep '\[ \]' || true
         if [[ "$RESPALDAR" == "1" ]]; then
             install -d -m 700 -o "$USUARIO_APP" -g "$USUARIO_APP" "$DIR_RESPALDOS"
-            como_app "$DIR_APP/.venv/bin/python" despliegue/respaldar_bd.py "$DIR_RESPALDOS" \
+            como_app "$DIR_APP/.venv/bin/python" despliegue/respaldar_bd.py \
                 || falla "No se pudo respaldar la base; no se migra. (RESPALDAR=0 para omitirlo)"
         fi
         manage migrate --noinput

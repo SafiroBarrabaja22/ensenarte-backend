@@ -1,5 +1,6 @@
 """Pruebas de control de acceso por rol en las vistas de cursos y panel."""
 
+import secrets
 import io
 import shutil
 import tempfile
@@ -23,6 +24,10 @@ from apps.usuarios.roles import (
 )
 
 from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta
+
+# Clave al azar en cada ejecucion: ninguna contrasena queda escrita en el codigo.
+CLAVE = secrets.token_urlsafe(12) + "Aa1!"
+
 
 MEDIA_TEMPORAL = tempfile.mkdtemp(prefix="ensenarte-pruebas-")
 
@@ -56,10 +61,10 @@ class RolesTests(APITestCase):
             ("creador", ROL_CREADOR),
             ("admin", ROL_ADMINISTRADOR),
         ):
-            usuario = User.objects.create_user(nombre, password="ClaveSegura123")
+            usuario = User.objects.create_user(nombre, password=CLAVE)
             asignar_rol(usuario, rol)
             self.usuarios[nombre] = usuario
-        self.sin_rol = User.objects.create_user("sinrol", password="ClaveSegura123")
+        self.sin_rol = User.objects.create_user("sinrol", password=CLAVE)
 
         self.curso_propio = Curso.objects.create(
             nombre="propio", titulo="Propio", portada_curso="",

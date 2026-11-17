@@ -413,6 +413,7 @@ GitHub Pages no deja enviar cabeceras, así que la política va en una etiqueta
 |---|---|---|
 | `script-src` | el propio sitio y `cdn.jsdelivr.net` (MediaPipe) | **No se ejecuta ningún script en línea ni inyectado.** Si un XSS lograra meter `<img onerror=...>`, el navegador lo bloquea |
 | `connect-src` | el sitio, la API (`.ts.net` y local), jsdelivr, storage.googleapis.com | Aunque corriera código, no podría enviar los tokens a otro servidor |
+| `style-src` | el sitio y Google Fonts, **sin `'unsafe-inline'`** | Ninguna página usa `style="..."`: los valores calculados se aplican desde JS (`aplicarVariablesCss`). Un atributo de estilo inyectado no tiene efecto |
 | `img-src` / `media-src` | el sitio, la API, `data:` y `blob:` | |
 | `form-action` | el sitio y formsubmit.co | Un formulario inyectado no puede enviar datos a otro sitio |
 | `object-src 'none'`, `base-uri 'self'` | | Sin plugins; no se puede cambiar la base de los enlaces |

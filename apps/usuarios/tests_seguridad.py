@@ -1,5 +1,6 @@
 """Pruebas de la configuracion de JWT y CORS."""
 
+import secrets
 from datetime import timedelta
 
 from django.conf import settings
@@ -14,18 +15,22 @@ from config.settings import validar_origenes_cors
 
 from .roles import ROL_ESTUDIANTE, asignar_rol
 
+# Clave al azar en cada ejecucion: ninguna contrasena queda escrita en el codigo.
+CLAVE = secrets.token_urlsafe(12) + "Aa1!"
+
+
 ORIGEN_LOCAL = "http://localhost:5500"
 ORIGEN_PRODUCCION = "https://safirobarrabaja22.github.io"
 
 
 class JWTTests(APITestCase):
     def setUp(self):
-        usuario = User.objects.create_user("ana", password="ClaveSegura123")
+        usuario = User.objects.create_user("ana", password=CLAVE)
         asignar_rol(usuario, ROL_ESTUDIANTE)
 
     def login(self):
         respuesta = self.client.post(
-            reverse("login"), {"username": "ana", "password": "ClaveSegura123"}, format="json"
+            reverse("login"), {"username": "ana", "password": CLAVE}, format="json"
         )
         self.assertEqual(respuesta.status_code, status.HTTP_200_OK)
         return respuesta.data["access"], respuesta.data["refresh"]

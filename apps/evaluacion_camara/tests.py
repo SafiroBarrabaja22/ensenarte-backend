@@ -1,3 +1,4 @@
+import secrets
 from django.contrib.auth.models import User
 from django.test import override_settings
 from django.urls import reverse
@@ -8,6 +9,10 @@ from apps.cursos.models import Curso, ProgresoUsuario, RecursoVisual
 from apps.usuarios.roles import ROL_ESTUDIANTE, asignar_rol
 
 from .models import EvaluacionCamara, IntentoCamara
+
+# Clave al azar en cada ejecucion: ninguna contrasena queda escrita en el codigo.
+CLAVE = secrets.token_urlsafe(12) + "Aa1!"
+
 
 URL = reverse("evaluacion_camara")
 
@@ -29,8 +34,8 @@ def intentos(correctas, total, **extra):
 
 class EvaluacionCamaraTests(APITestCase):
     def setUp(self):
-        self.usuario = User.objects.create_user("ana", password="ClaveSegura123")
-        self.otro = User.objects.create_user("beto", password="ClaveSegura123")
+        self.usuario = User.objects.create_user("ana", password=CLAVE)
+        self.otro = User.objects.create_user("beto", password=CLAVE)
         asignar_rol(self.usuario, ROL_ESTUDIANTE)
         asignar_rol(self.otro, ROL_ESTUDIANTE)
         self.curso = Curso.objects.create(
@@ -173,7 +178,7 @@ class EvaluacionCamaraTests(APITestCase):
         )
 
     def test_usuario_sin_rol_recibe_403(self):
-        sin_rol = User.objects.create_user("sinrol", password="ClaveSegura123")
+        sin_rol = User.objects.create_user("sinrol", password=CLAVE)
         self.client.force_authenticate(sin_rol)
         self.assertEqual(
             self.enviar(intentos(7, 10)).status_code, status.HTTP_403_FORBIDDEN

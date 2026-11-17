@@ -2,7 +2,11 @@
 Respalda la base de datos MySQL/MariaDB configurada en el .env antes de migrar.
 
 Uso (lo llama despliegue/desplegar.sh):
-    .venv/bin/python despliegue/respaldar_bd.py /srv/ensenarte/respaldos
+    .venv/bin/python despliegue/respaldar_bd.py
+
+Los respaldos van SIEMPRE a la carpeta "respaldos" junto al proyecto
+(/srv/ensenarte/respaldos si el proyecto esta en /srv/ensenarte/ensenarte-backend).
+La ruta no se recibe por argumento: asi nadie puede hacer que escriba en otro lugar.
 
 - Lee la conexion de los settings de Django: no hay que repetir credenciales.
 - La contrasena va en un archivo temporal con permisos 600 que se borra al
@@ -22,6 +26,7 @@ import time
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent.parent
+CARPETA_RESPALDOS = RAIZ.parent / "respaldos"
 RESPALDOS_A_CONSERVAR = 10
 
 sys.path.insert(0, str(RAIZ))
@@ -40,8 +45,8 @@ def valor_cnf(texto):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit("Uso: respaldar_bd.py <carpeta_de_respaldos>")
+    if len(sys.argv) != 1:
+        sys.exit("Uso: respaldar_bd.py (sin argumentos; guarda en ../respaldos)")
     bd = settings.DATABASES["default"]
     if "mysql" not in bd["ENGINE"]:
         print("La base no es MySQL; no se hace respaldo.")
@@ -50,7 +55,7 @@ def main():
     if not programa:
         sys.exit("No se encontro mariadb-dump ni mysqldump.")
 
-    carpeta = Path(sys.argv[1])
+    carpeta = CARPETA_RESPALDOS
     carpeta.mkdir(mode=0o700, parents=True, exist_ok=True)
     destino = carpeta / f"{bd['NAME']}-{time.strftime('%Y%m%d-%H%M%S')}.sql.gz"
 

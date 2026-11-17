@@ -73,6 +73,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Buscar vulnerabilidades conocidas en las dependencias
+        # Revisa todo lo instalado (tambien las dependencias indirectas, como
+        # sqlparse o asgiref) contra la base de vulnerabilidades de PyPI (OSV).
+        # Falla si encuentra alguna: se arregla subiendo la version en
+        # requirements.txt (Dependabot abre esos PR cada semana).
+        run: |
+          pip install pip-audit==2.10.1
+          pip-audit --progress-spinner off --skip-editable
+
       - name: Revisar la configuracion de Django
         run: python manage.py check
 

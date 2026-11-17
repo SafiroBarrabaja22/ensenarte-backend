@@ -55,6 +55,8 @@ main() {
     echo "Version: $antes -> $(como_app git rev-parse --short HEAD)"
 
     paso "2/7 Instalando dependencias"
+    # pip primero: las versiones viejas de pip tienen vulnerabilidades conocidas.
+    como_app "$DIR_APP/.venv/bin/python" -m pip install --quiet --disable-pip-version-check --upgrade pip
     como_app "$DIR_APP/.venv/bin/python" -m pip install --quiet --disable-pip-version-check \
         -r requirements.txt
 

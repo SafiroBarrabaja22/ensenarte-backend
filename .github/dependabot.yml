@@ -1,0 +1,27 @@
+# Dependabot revisa cada semana si hay versiones nuevas de las dependencias y
+# abre un pull request para cada una. Las actualizaciones de seguridad llegan
+# aparte, en cuanto se publica la vulnerabilidad (activarlas en Settings ->
+# Code security -> Dependabot security updates).
+# La CI (pip-audit) corre en cada PR, asi que cada actualizacion llega probada.
+
+version: 2
+updates:
+  - package-ecosystem: "pip"
+    directory: "/"            # requirements.txt y requirements-dev.txt
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "Dependencias"
+    groups:
+      # pytest y sus plugins solo se usan en pruebas: un solo PR para todos.
+      pruebas:
+        patterns: ["pytest*"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"            # .github/workflows/
+    schedule:
+      interval: "monthly"
+    commit-message:
+      prefix: "CI"

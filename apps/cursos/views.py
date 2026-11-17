@@ -2,12 +2,28 @@ import random
 
 from django.shortcuts import get_object_or_404
 from django.db import transaction
-from rest_framework import status
+from drf_spectacular.utils import extend_schema, inline_serializer
+from rest_framework import serializers, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from apps.usuarios.models import PerfilUsuario
+from config.openapi import (
+    EJEMPLO_CURSO,
+    EJEMPLO_INTENTO,
+    EJEMPLO_RESULTADO,
+    ETIQUETA_CURSOS,
+    ETIQUETA_EVALUACION,
+    MENSAJE_403,
+    PARAM_SLUG,
+    error_400,
+    error_401,
+    error_403,
+    error_404,
+    ok,
+    respuestas,
+)
 
 from .models import (
     Curso,
@@ -19,6 +35,7 @@ from .models import (
 from .permissions import PUEDE_APRENDER
 from .serializers import (
     CursoSerializer,
+    InsigniaSerializer,
     IntentoSerializer,
     PalabraDiccionarioSerializer,
     ProgresoSerializer,
@@ -26,9 +43,86 @@ from .serializers import (
 
 
 # ==========================================================
+# ESQUEMAS DE RESPUESTA (solo documentacion OpenAPI)
+# ==========================================================
+
+DiccionarioCursoSerializer = inline_serializer(
+    "DiccionarioCurso",
+    {"curso": CursoSerializer(), "palabras": PalabraDiccionarioSerializer(many=True)},
+)
+
+DetallePreguntaSerializer = inline_serializer(
+    "DetallePreguntaResultado",
+    {
+        "etiqueta": serializers.CharField(),
+        "texto": serializers.CharField(),
+        "video": serializers.CharField(),
+        "acierto": serializers.BooleanField(),
+        "detalle": serializers.CharField(),
+        "opciones": inline_serializer(
+            "OpcionResultado",
+            {"id": serializers.IntegerField(), "texto": serializers.CharField(), "es_correcta": serializers.BooleanField()},
+            many=True,
+        ),
+        "elegidas": serializers.ListField(child=serializers.IntegerField()),
+    },
+    many=True,
+)
+
+class ResultadoEvaluacionSerializer(serializers.Serializer):
+    """Esquema de `_resultado()`. Se usa solo y anidado en RespuestaEvaluacion."""
+
+    curso = serializers.CharField()
+    curso_titulo = serializers.CharField()
+    aciertos = serializers.IntegerField()
+    errores = serializers.IntegerField()
+    total = serializers.IntegerField()
+    porcentaje = serializers.IntegerField()
+    detalle_preguntas = DetallePreguntaSerializer
+    mensaje = serializers.CharField()
+    insignia_100_ganada = serializers.BooleanField()
+    insignia_100_nueva = serializers.BooleanField()
+    insignia_100 = InsigniaSerializer(allow_null=True)
+
+RespuestaEvaluacionSerializer = inline_serializer(
+    "RespuestaEvaluacion",
+    {
+        "correcta": serializers.BooleanField(required=False),
+        "mensaje": serializers.CharField(required=False),
+        "finalizado": serializers.BooleanField(),
+        "siguiente": IntentoSerializer(required=False, help_text="Si acertó y quedan preguntas."),
+        "estado": IntentoSerializer(required=False, help_text="Si falló: la misma pregunta sigue activa."),
+        "resultado": ResultadoEvaluacionSerializer(required=False, help_text="Si fue la última pregunta."),
+    },
+)
+
+HistorialItemSerializer = inline_serializer(
+    "IntentoHistorial",
+    {
+        "id": serializers.IntegerField(),
+        "aciertos": serializers.IntegerField(),
+        "errores": serializers.IntegerField(),
+        "total": serializers.IntegerField(),
+        "fecha": serializers.DateTimeField(),
+    },
+    many=True,
+)
+
+ROLES_APRENDIZAJE = "Cualquier rol (Estudiante, Profesor, Interprete, CreadorDeCursos, Administrador)."
+
+
+# ==========================================================
 # CATALOGO PUBLICO
 # ==========================================================
 
+@extend_schema(
+    tags=[ETIQUETA_CURSOS],
+    summary="Catálogo de cursos",
+    auth=[],  # publico: sin candado en Swagger UI
+    operation_id="cursos_listar",
+    description="Cursos activos. Público, sin token.",
+    responses=respuestas(ok(CursoSerializer(many=True), [EJEMPLO_CURSO])),
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def lista_cursos(request):
@@ -37,6 +131,15 @@ def lista_cursos(request):
     return Response(CursoSerializer(cursos, many=True).data)
 
 
+@extend_schema(
+    tags=[ETIQUETA_CURSOS],
+    summary="Detalle de un curso",
+    auth=[],  # publico: sin candado en Swagger UI
+    operation_id="cursos_detalle",
+    description="Un curso activo por su slug. Público, sin token.",
+    parameters=[PARAM_SLUG],
+    responses=respuestas(ok(CursoSerializer, EJEMPLO_CURSO), error_404()),
+)
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def detalle_curso(request, slug):
@@ -45,6 +148,22 @@ def detalle_curso(request, slug):
     return Response(CursoSerializer(curso).data)
 
 
+@extend_schema(
+    tags=[ETIQUETA_CURSOS],
+    summary="Diccionario visual de un curso",
+    description="Palabras del curso en el orden definido por el profesor, con imagen y gif. "
+    + ROLES_APRENDIZAJE,
+    parameters=[PARAM_SLUG],
+    responses=respuestas(
+        ok(DiccionarioCursoSerializer, {
+            "curso": EJEMPLO_CURSO,
+            "palabras": [{"id": 1, "titulo": "A", "imagen_frontal": "abecedario/a.png", "video_gif": "abecedario/a.gif"}],
+        }),
+        error_401(),
+        error_403(detalle=MENSAJE_403, descripcion="El usuario no tiene ningún rol asignado."),
+        error_404(),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_APRENDER])
 def diccionario_curso(request, slug):
@@ -59,6 +178,22 @@ def diccionario_curso(request, slug):
     )
 
 
+@extend_schema(
+    tags=[ETIQUETA_CURSOS],
+    summary="Mi progreso",
+    description="Resultado consolidado del usuario en cada curso que ha evaluado. " + ROLES_APRENDIZAJE,
+    responses=respuestas(
+        ok(ProgresoSerializer(many=True), [{
+            "curso": "abecedario", "curso_titulo": "Abecedario",
+            "curso_insignia": "/media/biblioteca/insignia.png", "curso_insignia_tipo": "curso_completado",
+            "curso_insignia_nombre": "Curso completado", "insignia_100_ganada": False,
+            "aciertos": 9, "errores": 1, "completado": True,
+            "fecha_ultima_actividad": "2026-11-16T15:30:00-05:00",
+        }]),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_APRENDER])
 def mi_progreso(request):
@@ -99,6 +234,24 @@ def _intento_activo(user, curso):
     return intento
 
 
+@extend_schema(
+    tags=[ETIQUETA_EVALUACION],
+    summary="Iniciar evaluación",
+    description="Crea un intento con las preguntas del curso en orden aleatorio (limitadas por "
+    "`preguntas_por_evaluacion` si el curso lo define). Si había un intento abierto, se descarta. "
+    "Devuelve la primera pregunta; las opciones **no** indican cuál es la correcta. " + ROLES_APRENDIZAJE,
+    parameters=[PARAM_SLUG],
+    request=None,
+    responses=respuestas(
+        ok(IntentoSerializer, EJEMPLO_INTENTO, codigo=201, descripcion="Intento creado."),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+        error_404(
+            "El curso no existe, no está activo o no tiene preguntas con opciones.",
+            detalle="No hay preguntas registradas para este curso.",
+        ),
+    ),
+)
 @api_view(["POST"])
 @permission_classes([PUEDE_APRENDER])
 def iniciar_evaluacion(request, slug):
@@ -134,6 +287,18 @@ def iniciar_evaluacion(request, slug):
     )
 
 
+@extend_schema(
+    tags=[ETIQUETA_EVALUACION],
+    summary="Pregunta actual",
+    description="Estado del intento abierto y la pregunta que toca responder. " + ROLES_APRENDIZAJE,
+    parameters=[PARAM_SLUG],
+    responses=respuestas(
+        ok(IntentoSerializer, EJEMPLO_INTENTO),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+        error_404("No hay un intento abierto en este curso.", detalle="No hay una evaluacion en curso. Inicia una nueva."),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_APRENDER])
 def evaluacion_actual(request, slug):
@@ -189,6 +354,26 @@ def _cerrar_intento(intento):
     return progreso, insignia_100_nueva
 
 
+@extend_schema(
+    tags=[ETIQUETA_EVALUACION],
+    summary="Responder la pregunta actual",
+    description="Solo se avanza al acertar; cada fallo suma un error y un acierto solo puntúa si "
+    "esa pregunta no se había fallado antes. Al responder la última, el intento se cierra, se "
+    "actualiza el progreso y llega `resultado`. " + ROLES_APRENDIZAJE,
+    parameters=[PARAM_SLUG],
+    request=inline_serializer("ResponderEvaluacion", {"opcion_id": serializers.IntegerField(help_text="ID de la opción elegida.")}),
+    responses=respuestas(
+        ok(RespuestaEvaluacionSerializer, {
+            "correcta": True, "mensaje": "Correcto.", "finalizado": False,
+            "siguiente": {**EJEMPLO_INTENTO, "actual": 2, "aciertos": 1},
+        }),
+        error_400({"detail": "La opcion enviada no pertenece a la pregunta actual."}, detalle=True,
+                  descripcion="La opción no existe o no es de la pregunta actual."),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+        error_404("No hay un intento abierto en este curso.", detalle="No hay una evaluacion en curso."),
+    ),
+)
 @api_view(["POST"])
 @permission_classes([PUEDE_APRENDER])
 def responder_evaluacion(request, slug):
@@ -312,6 +497,20 @@ def _resultado(intento, insignia_100_nueva=False):
     }
 
 
+@extend_schema(
+    tags=[ETIQUETA_EVALUACION],
+    summary="Resultado del último intento",
+    description="Resultado del último intento terminado, con el detalle de cada pregunta "
+    "(ya se muestra cuál era la opción correcta). " + ROLES_APRENDIZAJE,
+    parameters=[PARAM_SLUG],
+    responses=respuestas(
+        ok(ResultadoEvaluacionSerializer, EJEMPLO_RESULTADO),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+        error_404("El usuario aún no termina ninguna evaluación de este curso.",
+                  detalle="Todavia no has terminado una evaluacion de este curso."),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_APRENDER])
 def resultado_evaluacion(request, slug):
@@ -332,6 +531,19 @@ def resultado_evaluacion(request, slug):
     return Response(_resultado(intento))
 
 
+@extend_schema(
+    tags=[ETIQUETA_EVALUACION],
+    summary="Historial de intentos",
+    description="Los últimos 5 intentos terminados del usuario en el curso, del más antiguo al "
+    "más reciente. " + ROLES_APRENDIZAJE,
+    parameters=[PARAM_SLUG],
+    responses=respuestas(
+        ok(HistorialItemSerializer, [{"id": 15, "aciertos": 9, "errores": 1, "total": 10, "fecha": "2026-11-16T15:30:00-05:00"}]),
+        error_401(),
+        error_403(descripcion="El usuario no tiene ningún rol asignado."),
+        error_404(),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_APRENDER])
 def historial_evaluacion(request, slug):

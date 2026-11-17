@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 FORMATOS_IMAGEN_PERMITIDOS = {
@@ -26,6 +27,14 @@ from .models import (
     ProgresoUsuario,
     RecursoVisual,
 )
+
+
+class InsigniaSerializer(serializers.Serializer):
+    """Insignia de curso 100% (solo documentacion de respuestas)."""
+
+    id = serializers.IntegerField(required=False)
+    nombre = serializers.CharField()
+    imagen = serializers.CharField(help_text="Ruta /media/... de la imagen.")
 
 
 # ==========================================================
@@ -55,13 +64,14 @@ class CursoSerializer(serializers.ModelSerializer):
             "total_palabras",
         )
 
-    def get_total_preguntas(self, obj):
+    def get_total_preguntas(self, obj) -> int:
         """Preguntas que vera el estudiante en cada intento."""
         total = obj.preguntas.count()
         if obj.preguntas_por_evaluacion:
             return min(total, obj.preguntas_por_evaluacion)
         return total
 
+    @extend_schema_field(InsigniaSerializer(allow_null=True))
     def get_insignia_100(self, obj):
         recurso = obj.insignia_100
         if not recurso or not recurso.archivo:
@@ -94,6 +104,7 @@ class PreguntaPublicaSerializer(serializers.ModelSerializer):
         model = Pregunta
         fields = ("id", "texto", "video", "opciones")
 
+    @extend_schema_field(OpcionPublicaSerializer(many=True))
     def get_opciones(self, obj):
         import random
 
@@ -124,17 +135,17 @@ class ProgresoSerializer(serializers.ModelSerializer):
             "fecha_ultima_actividad",
         )
 
-    def get_curso_insignia(self, obj):
+    def get_curso_insignia(self, obj) -> str:
         recurso_100 = obj.curso.insignia_100
         if obj.insignia_100_ganada and recurso_100 and recurso_100.archivo:
             return f"/{recurso_100.archivo.url.lstrip('/')}"
         insignia = getattr(obj.curso, "insignia", "") or ""
         return f"/{insignia.lstrip('/')}" if insignia else ""
 
-    def get_curso_insignia_tipo(self, obj):
+    def get_curso_insignia_tipo(self, obj) -> str:
         return "curso_100" if obj.insignia_100_ganada and obj.curso.insignia_100_id else "curso_completado"
 
-    def get_curso_insignia_nombre(self, obj):
+    def get_curso_insignia_nombre(self, obj) -> str:
         if obj.insignia_100_ganada and obj.curso.insignia_100_id:
             return "Curso 100%"
         return "Curso completado"
@@ -157,9 +168,10 @@ class IntentoSerializer(serializers.ModelSerializer):
             "pregunta",
         )
 
-    def get_actual(self, obj):
+    def get_actual(self, obj) -> int:
         return min(obj.indice_actual + 1, obj.total_preguntas)
 
+    @extend_schema_field(PreguntaPublicaSerializer(allow_null=True))
     def get_pregunta(self, obj):
         pregunta_id = obj.pregunta_actual_id()
         if pregunta_id is None:
@@ -215,10 +227,10 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
             )
         return attrs
 
-    def get_archivo_url(self, obj):
+    def get_archivo_url(self, obj) -> str:
         return f"/{obj.archivo.url.lstrip('/')}"
 
-    def get_extension(self, obj):
+    def get_extension(self, obj) -> str:
         return Path(obj.archivo.name).suffix.lower().lstrip(".")
 
 
@@ -257,13 +269,13 @@ class CursoPanelSerializer(serializers.ModelSerializer):
         )
         read_only_fields = ("creado_por", "fecha_creacion", "fecha_modificacion")
 
-    def get_insignia_100_url(self, obj):
+    def get_insignia_100_url(self, obj) -> str:
         recurso = obj.insignia_100
         if not recurso or not recurso.archivo:
             return ""
         return f"/{recurso.archivo.url.lstrip('/')}"
 
-    def get_insignia_100_nombre(self, obj):
+    def get_insignia_100_nombre(self, obj) -> str:
         return obj.insignia_100.nombre if obj.insignia_100_id else ""
 
 

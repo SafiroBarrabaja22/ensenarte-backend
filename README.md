@@ -99,6 +99,25 @@ python manage.py runserver
 La API queda en `http://127.0.0.1:8000/api/` y el admin de Django en
 `http://127.0.0.1:8000/admin/`.
 
+### Documentación interactiva (OpenAPI)
+
+| Ruta | Qué es |
+|---|---|
+| `http://127.0.0.1:8000/api/docs/` | **Swagger UI**: probar cada endpoint desde el navegador |
+| `http://127.0.0.1:8000/api/redoc/` | **ReDoc**: la misma documentación en formato de lectura |
+| `http://127.0.0.1:8000/api/schema/` | Esquema OpenAPI 3 en YAML (para Postman, Insomnia, generadores de clientes) |
+
+Para probar endpoints protegidos en Swagger UI:
+1. Ejecuta `POST /api/auth/login/` (por ejemplo con `estudiante_demo` / `Ensenarte2026!`).
+2. Copia el `access` de la respuesta.
+3. Pulsa **Authorize** y pega el token, sin escribir `Bearer`.
+
+El token se conserva aunque recargues la página. Los endpoints están agrupados
+en Autenticación, Cursos, Evaluación, Panel y Reportes, y cada uno documenta
+qué roles lo pueden usar y sus respuestas 400, 401, 403 y 404.
+
+Para importar la API en Postman: *Import* → URL `http://127.0.0.1:8000/api/schema/`.
+
 > Las migraciones no están versionadas en este repositorio: se generan con
 > `makemigrations` en el primer arranque. Una vez generadas, **sí** deben
 > commitearse para que todo el equipo comparta el mismo esquema.

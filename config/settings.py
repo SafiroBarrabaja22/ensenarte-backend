@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     # al rotarlos. Sus tablas vienen en las migraciones del propio paquete.
     "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
+    # Documentacion OpenAPI: /api/schema/, /api/docs/ (Swagger UI), /api/redoc/
+    "drf_spectacular",
     # Propias
     "apps.usuarios",
     "apps.cursos",
@@ -120,8 +122,62 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }
 
+
+# ==========================================================
+# DOCUMENTACION OPENAPI (drf-spectacular)
+# ==========================================================
+
+from config.etiquetas_api import DESCRIPCION_ETIQUETAS  # noqa: E402
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "API de enSEÑArte",
+    "DESCRIPTION": (
+        "API REST de enSEÑArte, aplicativo para aprender Lengua de Señas "
+        "Colombiana (LSC): catálogo de cursos, diccionario visual, evaluaciones "
+        "por preguntas y con cámara, y panel administrativo por roles.\n\n"
+        "**Cómo probar los endpoints protegidos desde esta página**\n\n"
+        "1. Abre `POST /api/auth/login/`, pulsa *Try it out* y envía tu usuario y "
+        "contraseña (cuentas de demostración en el README del backend).\n"
+        "2. Copia el valor de `access` de la respuesta.\n"
+        "3. Pulsa el botón **Authorize** (arriba a la derecha), pega el token "
+        "**sin** escribir `Bearer` y confirma.\n"
+        "4. Desde ahí, cada *Try it out* envía `Authorization: Bearer <token>`. "
+        "El token dura 15 minutos; si responde 401, repite el login o usa "
+        "`POST /api/auth/refresh/`.\n\n"
+        "**Roles:** Estudiante, Profesor, Interprete, CreadorDeCursos y "
+        "Administrador. Cada endpoint indica qué roles lo pueden usar; con otro "
+        "rol responde 403."
+    ),
+    "VERSION": "1.0.0",
+    "TAGS": DESCRIPCION_ETIQUETAS,
+    # El esquema no se lista a si mismo en la documentacion.
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": r"/api/",
+    # Separa esquemas de entrada y salida: los campos de archivo (gif, imagen)
+    # se muestran como carga de archivo en Swagger UI.
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,  # el token sobrevive a recargar la pagina
+        "tryItOutEnabled": True,
+        "filter": True,
+        "docExpansion": "list",
+    },
+    # Versiones fijas de los recursos de Swagger UI y ReDoc (no "@latest").
+    "SWAGGER_UI_DIST": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14",
+    "SWAGGER_UI_FAVICON_HREF": "https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14/favicon-32x32.png",
+    "REDOC_DIST": "https://cdn.jsdelivr.net/npm/redoc@2.1.5",
+}
+
+# - access: corto (15 min). Viaja en cada peticion; si alguien lo roba, sirve poco
+#   tiempo. El frontend lo renueva solo, sin que el usuario lo note.
+# - refresh: 7 dias. Con ROTATE cada renovacion entrega un refresh nuevo y el
+#   anterior queda en la lista negra: un refresh robado deja de servir en cuanto
+#   el usuario legitimo renueva, y la sesion solo vence tras 7 dias SIN uso.
+# - Al cerrar sesion el frontend llama a /api/auth/logout/ y el refresh se
+#   invalida en el servidor (no basta con borrarlo del navegador).
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=env.int("JWT_ACCESO_MINUTOS", default=15)),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=env.int("JWT_REFRESCO_DIAS", default=7)),

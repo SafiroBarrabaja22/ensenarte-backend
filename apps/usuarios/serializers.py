@@ -43,14 +43,14 @@ class PerfilSerializer(serializers.ModelSerializer):
         read_only_fields = ("estrellas",)
         extra_kwargs = {"foto_perfil": {"write_only": True, "required": False}}
 
-    def get_foto_perfil_url(self, obj):
+    def get_foto_perfil_url(self, obj) -> str | None:
         if not obj.foto_perfil:
             return None
         request = self.context.get("request")
         url = obj.foto_perfil.url
         return request.build_absolute_uri(url) if request else url
 
-    def get_roles(self, obj):
+    def get_roles(self, obj) -> list[str]:
         """Roles del usuario, p. ej. ["Profesor", "Estudiante"]. Ver usuarios/roles.py."""
         return roles_de(obj.user)
 

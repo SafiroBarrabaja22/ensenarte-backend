@@ -6,13 +6,35 @@ from django.core.files.storage import default_storage
 from django.db import transaction
 from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from drf_spectacular.utils import (
+    OpenApiExample,
+    OpenApiResponse,
+    extend_schema,
+    extend_schema_view,
+    inline_serializer,
+)
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.usuarios.models import PerfilUsuario
+from config.openapi import (
+    ETIQUETA_PANEL,
+    ETIQUETA_REPORTES,
+    MENSAJE_403_CURSO_AJENO,
+    ErrorDetalleSerializer,
+    error_400,
+    error_401,
+    error_403,
+    error_404,
+    filtro,
+    ok,
+    param_id,
+    respuestas,
+    sin_contenido,
+)
 
 from .models import Curso, OpcionPregunta, PalabraDiccionario, Pregunta, RecursoVisual
 from apps.usuarios.roles import (
@@ -43,6 +65,100 @@ from .serializers import (
 
 
 
+# ==========================================================
+# DOCUMENTACION OPENAPI
+# ==========================================================
+
+ROLES_CONTENIDO = (
+    "Roles: **Profesor** (solo en los cursos que él creó), **CreadorDeCursos** o "
+    "**Administrador** (cualquier curso)."
+)
+ROLES_BIBLIOTECA_ESCRITURA = "Roles: **Interprete** o **Administrador**."
+
+
+def _doc_crud(singular, plural, articulo, serializer, ejemplo, ejemplo_400,
+              descripcion_roles=ROLES_CONTENIDO, filtros=(), curso_propio=True):
+    """extend_schema para las 6 acciones de un ModelViewSet del panel."""
+    # drf-spectacular envuelve solo el ejemplo en {count, next, previous, results}
+    # cuando la vista pagina; aqui va siempre la lista simple.
+    listado = [ejemplo]
+    e403 = error_403(
+        descripcion="El rol no administra contenido" + (", o el curso es de otro profesor." if curso_propio else "."),
+        extra=MENSAJE_403_CURSO_AJENO if curso_propio else None,
+    )
+    e403_listado = error_403(descripcion="El rol no administra contenido.")
+    nota_listado = (
+        " Un Profesor solo ve el contenido de sus propios cursos." if curso_propio else ""
+    )
+    comun = {"tags": [ETIQUETA_PANEL]}
+    return {
+        "list": extend_schema(
+            **comun, summary=f"Listar {plural}",
+            description=f"Lista {plural}.{nota_listado} {descripcion_roles}",
+            parameters=list(filtros),
+            responses=respuestas(ok(serializer(many=True), listado), error_401(), e403_listado),
+        ),
+        "create": extend_schema(
+            **comun, summary=f"Crear {singular}",
+            description=f"Crea {articulo} {singular}. {descripcion_roles}",
+            responses=respuestas(
+                ok(serializer, ejemplo, codigo=201, descripcion="Creado."),
+                error_400(ejemplo_400), error_401(), e403,
+            ),
+        ),
+        "retrieve": extend_schema(
+            **comun, summary=f"Ver {singular}",
+            description=f"Detalle de {articulo} {singular}. {descripcion_roles}",
+            parameters=[param_id(f"{articulo} {singular}")],
+            responses=respuestas(ok(serializer, ejemplo), error_401(), e403, error_404()),
+        ),
+        "update": extend_schema(
+            **comun, summary=f"Reemplazar {singular}",
+            description=f"Reemplaza todos los campos de {articulo} {singular}. {descripcion_roles}",
+            parameters=[param_id(f"{articulo} {singular}")],
+            responses=respuestas(ok(serializer, ejemplo), error_400(ejemplo_400), error_401(), e403, error_404()),
+        ),
+        "partial_update": extend_schema(
+            **comun, summary=f"Editar {singular}",
+            description=f"Cambia solo los campos enviados. {descripcion_roles}",
+            parameters=[param_id(f"{articulo} {singular}")],
+            responses=respuestas(ok(serializer, ejemplo), error_400(ejemplo_400), error_401(), e403, error_404()),
+        ),
+        "destroy": extend_schema(
+            **comun, summary=f"Eliminar {singular}",
+            description=f"Elimina {articulo} {singular}. {descripcion_roles}",
+            parameters=[param_id(f"{articulo} {singular}")],
+            responses=respuestas(sin_contenido("Eliminado."), error_401(), e403, error_404()),
+        ),
+    }
+
+
+EJEMPLO_CURSO_PANEL = {
+    "id": 1, "nombre": "abecedario", "titulo": "Abecedario",
+    "descripcion": "Curso basico del abecedario.", "portada_curso": "portadaAbecedario.jpg",
+    "icono_curso": "", "insignia": "", "insignia_100": 4, "insignia_100_nombre": "Curso 100%",
+    "insignia_100_url": "/media/biblioteca/insignia.png", "preguntas_por_evaluacion": 10,
+    "activo": True, "creado_por": "profesor_demo",
+    "fecha_creacion": "2026-11-16T10:00:00-05:00", "fecha_modificacion": "2026-11-16T10:00:00-05:00",
+}
+EJEMPLO_OPCION = {"id": 28, "pregunta": 7, "texto": "A", "es_correcta": True}
+EJEMPLO_PREGUNTA_PANEL = {
+    "id": 7, "curso": 1, "texto": "Cual es la sena para la letra A?", "video": "abecedario/a.gif",
+    "opciones": [EJEMPLO_OPCION],
+}
+EJEMPLO_PALABRA = {
+    "id": 1, "curso": 1, "titulo": "A", "imagen_frontal": "abecedario/a.png",
+    "video_gif": "abecedario/a.gif", "orden": 1,
+}
+EJEMPLO_RECURSO = {
+    "id": 4, "nombre": "Insignia dorada", "archivo_url": "/media/biblioteca/3f2a9c.png",
+    "extension": "png", "categoria": "curso_100", "fecha_creacion": "2026-11-16T10:00:00-05:00",
+}
+
+SubirGifSerializer = inline_serializer(
+    "SubirGif", {"gif": serializers.FileField(help_text="Archivo .gif de la seña.")}
+)
+
 def _es_gestor_global(usuario):
     return tiene_rol(usuario, *ROLES_GESTION_GLOBAL)
 
@@ -59,6 +175,10 @@ def _solo_lo_propio(vista, queryset, campo_dueno):
     return queryset
 
 
+@extend_schema_view(**_doc_crud(
+    "curso", "cursos", "un", CursoPanelSerializer, EJEMPLO_CURSO_PANEL,
+    {"nombre": ["Ya existe Curso con este Nombre."], "titulo": ["Este campo es requerido."]},
+))
 class CursoViewSet(viewsets.ModelViewSet):
     """CRUD de cursos. /api/panel/cursos/"""
 
@@ -73,6 +193,11 @@ class CursoViewSet(viewsets.ModelViewSet):
         serializer.save(creado_por=self.request.user)
 
 
+@extend_schema_view(**_doc_crud(
+    "pregunta", "preguntas", "una", PreguntaPanelSerializer, EJEMPLO_PREGUNTA_PANEL,
+    {"curso": ["Este campo es requerido."], "texto": ["Este campo no puede estar en blanco."]},
+    filtros=[filtro("curso", "Solo las preguntas de este curso (ID).")],
+))
 class PreguntaViewSet(viewsets.ModelViewSet):
     """CRUD de preguntas. Filtra con ?curso=<id>."""
 
@@ -98,6 +223,11 @@ class PreguntaViewSet(viewsets.ModelViewSet):
         serializer.save()
 
 
+@extend_schema_view(**_doc_crud(
+    "opción", "opciones", "una", OpcionPanelSerializer, EJEMPLO_OPCION,
+    {"non_field_errors": ["Una pregunta admite como maximo 4 opciones."]},
+    filtros=[filtro("pregunta", "Solo las opciones de esta pregunta (ID).")],
+))
 class OpcionViewSet(viewsets.ModelViewSet):
     """CRUD de opciones. Filtra con ?pregunta=<id>."""
 
@@ -132,6 +262,11 @@ class OpcionViewSet(viewsets.ModelViewSet):
             ).update(es_correcta=False)
 
 
+@extend_schema_view(**_doc_crud(
+    "palabra", "palabras del diccionario", "una", PalabraPanelSerializer, EJEMPLO_PALABRA,
+    {"titulo": ["Este campo es requerido."]},
+    filtros=[filtro("curso", "Solo las palabras de este curso (ID).")],
+))
 class PalabraViewSet(viewsets.ModelViewSet):
     """CRUD del diccionario. Filtra con ?curso=<id>."""
 
@@ -161,6 +296,24 @@ class PalabraViewSet(viewsets.ModelViewSet):
         )["maximo"]
         serializer.save(orden=(ultimo or 0) + 1)
 
+    @extend_schema(
+        tags=[ETIQUETA_PANEL],
+        summary="Reordenar el diccionario",
+        description="Recibe todos los IDs de palabras del curso en el orden nuevo. " + ROLES_CONTENIDO,
+        request=inline_serializer("ReordenarDiccionario", {
+            "curso": serializers.IntegerField(),
+            "ids": serializers.ListField(child=serializers.IntegerField(), help_text="Todas las palabras del curso."),
+        }),
+        responses=respuestas(
+            sin_contenido("Orden guardado."),
+            error_400({"detail": "La lista debe incluir todas las palabras del curso."}, detalle=True,
+                      descripcion="Falta `curso`, falta `ids` o la lista no coincide con las palabras del curso."),
+            error_401(),
+            error_403(descripcion="El rol no administra contenido, o el curso es de otro profesor.",
+                      extra=MENSAJE_403_CURSO_AJENO),
+            error_404("El curso no existe."),
+        ),
+    )
     @action(detail=False, methods=["post"])
     def reordenar(self, request):
         """POST /api/panel/diccionario/reordenar/ {"curso": id, "ids": [...]}"""
@@ -194,6 +347,56 @@ class PalabraViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema_view(**{
+    **_doc_crud(
+        "recurso", "recursos de la biblioteca", "un", RecursoVisualSerializer, EJEMPLO_RECURSO,
+        {"archivo": ["Formatos permitidos: PNG, GIF, JPG, JPEG, JFIF, WEBP, BMP, TIFF, AVIF, HEIC y HEIF."]},
+        descripcion_roles=ROLES_BIBLIOTECA_ESCRITURA, curso_propio=False,
+        filtros=[
+            filtro("q", "Busca en el nombre.", tipo=str),
+            filtro("extension", "Extensión del archivo, p. ej. `gif`.", tipo=str),
+            filtro("categoria", "`recurso`, `avatar`, `insignia` o `curso_100`.", tipo=str),
+            filtro("page", "Página (50 por página). Sin `page` devuelve la lista completa sin paginar."),
+        ],
+    ),
+    "list": extend_schema(
+        tags=[ETIQUETA_PANEL], summary="Listar la biblioteca visual",
+        description="Recursos, avatares e insignias. Cualquier usuario autenticado; sin rol de "
+        "contenido solo ve los `avatar` (para editar su perfil). Sin `?page=` devuelve la lista completa.",
+        parameters=[
+            filtro("q", "Busca en el nombre.", tipo=str),
+            filtro("extension", "Extensión del archivo, p. ej. `gif`.", tipo=str),
+            filtro("categoria", "`recurso`, `avatar`, `insignia` o `curso_100`.", tipo=str),
+            filtro("page", "Página (50 por página). Sin `page` devuelve la lista completa sin paginar."),
+        ],
+        responses=respuestas(
+            ok(RecursoVisualSerializer(many=True), [EJEMPLO_RECURSO]),
+            error_401(),
+        ),
+    ),
+    "retrieve": extend_schema(
+        tags=[ETIQUETA_PANEL], summary="Ver recurso",
+        description="Detalle de un recurso. Cualquier usuario autenticado (sin rol de contenido, solo avatares).",
+        parameters=[param_id("el recurso")],
+        responses=respuestas(ok(RecursoVisualSerializer, EJEMPLO_RECURSO), error_401(), error_404()),
+    ),
+    "destroy": extend_schema(
+        tags=[ETIQUETA_PANEL], summary="Eliminar recurso",
+        description="Elimina el recurso y su archivo. Si está en uso (curso, palabra, pregunta o "
+        "avatar de un perfil) responde 409. " + ROLES_BIBLIOTECA_ESCRITURA,
+        parameters=[param_id("el recurso")],
+        responses=respuestas(
+            sin_contenido("Eliminado."), error_401(), error_403(), error_404(),
+            {409: OpenApiResponse(
+                ErrorDetalleSerializer, description="El recurso está en uso.",
+                examples=[OpenApiExample(
+                    "En uso", value={"detail": "No se puede borrar: el recurso está usado en contenido."},
+                    response_only=True, status_codes=["409"],
+                )],
+            )},
+        ),
+    ),
+})
 class RecursoVisualViewSet(viewsets.ModelViewSet):
     """
     Biblioteca visual (recursos, avatares e insignias). /api/panel/recursos/
@@ -266,6 +469,22 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(
+    tags=[ETIQUETA_REPORTES],
+    summary="Resumen del panel",
+    description="Cifras generales para el tablero del panel. " + ROLES_CONTENIDO.replace(" (solo en los cursos que él creó)", ""),
+    responses=respuestas(
+        ok(inline_serializer("ResumenPanel", {
+            "total_cursos": serializers.IntegerField(),
+            "cursos_activos": serializers.IntegerField(),
+            "total_preguntas": serializers.IntegerField(),
+            "total_palabras": serializers.IntegerField(),
+            "total_usuarios": serializers.IntegerField(),
+        }), {"total_cursos": 2, "cursos_activos": 2, "total_preguntas": 15, "total_palabras": 15, "total_usuarios": 8}),
+        error_401(),
+        error_403(descripcion="El rol no administra contenido."),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_GESTIONAR_CONTENIDO])
 def resumen_panel(request):
@@ -281,6 +500,24 @@ def resumen_panel(request):
     )
 
 
+@extend_schema(
+    tags=[ETIQUETA_REPORTES],
+    summary="Estrellas de los estudiantes",
+    description="Todos los usuarios ordenados por estrellas (cursos completados), de mayor a menor. "
+    "Roles: Profesor, CreadorDeCursos o Administrador.",
+    responses=respuestas(
+        ok(inline_serializer("EstrellasEstudiante", {
+            "usuario": serializers.CharField(),
+            "correo": serializers.EmailField(),
+            "estrellas": serializers.IntegerField(),
+        }, many=True), [
+            {"usuario": "carlos", "correo": "carlos@correo.com", "estrellas": 5},
+            {"usuario": "ana", "correo": "ana@correo.com", "estrellas": 2},
+        ]),
+        error_401(),
+        error_403(descripcion="El rol no administra contenido."),
+    ),
+)
 @api_view(["GET"])
 @permission_classes([PUEDE_GESTIONAR_CONTENIDO])
 def estrellas_estudiantes(request):
@@ -297,6 +534,21 @@ def estrellas_estudiantes(request):
     return Response(data)
 
 
+@extend_schema(
+    tags=[ETIQUETA_PANEL],
+    summary="Subir el gif de una palabra",
+    description="Guarda el gif en `media/diccionario_gifs/` y lo asigna a la palabra. "
+    "Roles: **Interprete** (cualquier curso), **Profesor** (solo sus cursos), CreadorDeCursos o Administrador.",
+    parameters=[param_id("la palabra")],
+    request={"multipart/form-data": SubirGifSerializer},
+    responses=respuestas(
+        ok(PalabraPanelSerializer, {**EJEMPLO_PALABRA, "video_gif": "/media/diccionario_gifs/sena_a.gif"}),
+        error_400({"detail": "Debes adjuntar el archivo en el campo 'gif'."}, detalle=True, descripcion="Falta el archivo."),
+        error_401(),
+        error_403(descripcion="El rol no sube gifs, o el curso es de otro profesor.", extra=MENSAJE_403_CURSO_AJENO),
+        error_404("La palabra no existe."),
+    ),
+)
 @api_view(["POST"])
 @permission_classes([PUEDE_SUBIR_GIF])
 def subir_gif_palabra(request, pk):
@@ -318,6 +570,21 @@ def subir_gif_palabra(request, pk):
     return Response(PalabraPanelSerializer(palabra).data)
 
 
+@extend_schema(
+    tags=[ETIQUETA_PANEL],
+    summary="Subir el gif de una pregunta",
+    description="Guarda el gif en `media/evaluacion_gifs/` y lo asigna a la pregunta. "
+    "Roles: **Interprete** (cualquier curso), **Profesor** (solo sus cursos), CreadorDeCursos o Administrador.",
+    parameters=[param_id("la pregunta")],
+    request={"multipart/form-data": SubirGifSerializer},
+    responses=respuestas(
+        ok(PreguntaPanelSerializer, {**EJEMPLO_PREGUNTA_PANEL, "video": "/media/evaluacion_gifs/sena_a.gif"}),
+        error_400({"detail": "Debes adjuntar el archivo en el campo 'gif'."}, detalle=True, descripcion="Falta el archivo."),
+        error_401(),
+        error_403(descripcion="El rol no sube gifs, o el curso es de otro profesor.", extra=MENSAJE_403_CURSO_AJENO),
+        error_404("La pregunta no existe."),
+    ),
+)
 @api_view(["POST"])
 @permission_classes([PUEDE_SUBIR_GIF])
 def subir_gif_pregunta(request, pk):
@@ -339,6 +606,23 @@ def subir_gif_pregunta(request, pk):
     return Response(PreguntaPanelSerializer(pregunta).data)
 
 
+@extend_schema(
+    tags=[ETIQUETA_PANEL],
+    summary="Subir una imagen de uso puntual",
+    description="Guarda la imagen en `media/contenido/` **sin** registrarla en la biblioteca. "
+    "Máximo 10 MB. Roles: Interprete, Profesor, CreadorDeCursos o Administrador.",
+    request={"multipart/form-data": inline_serializer(
+        "SubirArchivoContenido", {"archivo": serializers.ImageField()}
+    )},
+    responses=respuestas(
+        ok(inline_serializer("ArchivoSubido", {"archivo_url": serializers.CharField()}),
+           {"archivo_url": "/media/contenido/7b1e0c.png"}, codigo=201, descripcion="Archivo guardado."),
+        error_400({"detail": "Formato de imagen no permitido."}, detalle=True,
+                  descripcion="Falta el archivo, el formato no es una imagen permitida o supera 10 MB."),
+        error_401(),
+        error_403(descripcion="El rol no puede subir archivos de contenido."),
+    ),
+)
 @api_view(["POST"])
 @permission_classes([PUEDE_SUBIR_GIF])
 def subir_archivo_contenido(request):

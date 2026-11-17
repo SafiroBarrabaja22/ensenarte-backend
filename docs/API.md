@@ -1,5 +1,9 @@
 # Contrato de la API
 
+> La referencia completa y siempre actualizada se genera desde el código:
+> **Swagger UI** en `/api/docs/`, **ReDoc** en `/api/redoc/` y el esquema
+> OpenAPI en `/api/schema/`. Este archivo es un resumen escrito a mano.
+
 URL base en desarrollo: `http://127.0.0.1:8000/api`
 
 Todas las respuestas son JSON con codificación UTF-8.

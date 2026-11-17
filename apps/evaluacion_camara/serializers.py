@@ -1,8 +1,10 @@
 from django.conf import settings
 from django.db import transaction
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.cursos.models import Curso, ProgresoUsuario
+from apps.cursos.serializers import InsigniaSerializer
 from apps.usuarios.models import PerfilUsuario
 
 from .models import EvaluacionCamara, IntentoCamara
@@ -144,13 +146,14 @@ class EvaluacionCamaraSerializer(serializers.ModelSerializer):
             usuario=obj.usuario, curso=obj.curso
         ).select_related("curso__insignia_100").first() if obj.curso_id else None
 
-    def get_insignia_100_ganada(self, obj):
+    def get_insignia_100_ganada(self, obj) -> bool:
         progreso = self._progreso(obj)
         return bool(progreso and progreso.insignia_100_ganada)
 
-    def get_insignia_100_nueva(self, obj):
+    def get_insignia_100_nueva(self, obj) -> bool:
         return bool(getattr(obj, "insignia_100_nueva", False))
 
+    @extend_schema_field(InsigniaSerializer(allow_null=True))
     def get_insignia_100(self, obj):
         progreso = self._progreso(obj)
         recurso = progreso.curso.insignia_100 if progreso and progreso.insignia_100_ganada else None

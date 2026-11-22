@@ -1,3 +1,5 @@
+# OBSOLETO desde el despliegue con Docker (README.md, "Despliegue con Docker").
+# Se conserva como referencia; no lo uses junto con Docker: los dos ocupan el puerto 8000.
 # Servicio de systemd del backend de enSEÑArte (gunicorn).
 # Pasos de instalacion en docs/DESPLIEGUE.md. Resumen:
 #   sudo cp despliegue/ensenarte-backend.service /etc/systemd/system/

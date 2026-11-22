@@ -99,9 +99,27 @@ ASGI_APPLICATION = "config.asgi.application"
 # BASE DE DATOS
 # ==========================================================
 
-DATABASES = {
-    "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
-}
+# Tres formas, en este orden de prioridad:
+# 1. DB_NAME (+ DB_USER, DB_PASSWORD, DB_HOST, DB_PORT): MySQL/MariaDB. Es la
+#    que usa Docker (despliegue/docker.env.example), con DB_HOST=host.docker.internal
+#    para llegar al MySQL instalado en la miniPC.
+# 2. DATABASE_URL (mysql://usuario:clave@host:3306/base): la de desarrollo local.
+# 3. Sin ninguna: SQLite en db.sqlite3.
+if env("DB_NAME", default=""):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.mysql",
+            "NAME": env("DB_NAME"),
+            "USER": env("DB_USER", default=""),
+            "PASSWORD": env("DB_PASSWORD", default=""),
+            "HOST": env("DB_HOST", default="127.0.0.1"),
+            "PORT": env("DB_PORT", default="3306"),
+        }
+    }
+else:
+    DATABASES = {
+        "default": env.db("DATABASE_URL", default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
+    }
 
 
 # ==========================================================

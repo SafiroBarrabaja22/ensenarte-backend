@@ -1,0 +1,57 @@
+# enSEÑArte con Docker: backend (Django + gunicorn) y frontend (nginx).
+#
+# Este archivo va en la carpeta que CONTIENE los dos repositorios:
+#
+#   /srv/ensenarte/
+#   ├── docker-compose.yml   <- copia de ensenarte-backend/despliegue/docker-compose.yml
+#   ├── .env                 <- copia de ensenarte-backend/despliegue/docker.env.example, con los valores reales
+#   ├── ensenarte-backend/
+#   └── ensenarte-frontend/
+#
+# Guia completa: ensenarte-backend/README.md, seccion "Despliegue con Docker".
+#
+# Una sola entrada: el nginx del frontend (127.0.0.1:8080) sirve las paginas y
+# reenvia /api/, /admin/, /media/ y /static/ al backend. Tailscale Funnel
+# publica ese puerto con HTTPS. Los dos puertos escuchan solo en 127.0.0.1:
+# desde la red solo se entra por Funnel.
+#
+# MySQL NO esta en Docker: el backend llega al MySQL de la miniPC por
+# host.docker.internal (ver la nota de MySQL en la guia).
+
+name: ensenarte
+
+services:
+  backend:
+    build: ./ensenarte-backend
+    image: ensenarte-backend:latest
+    restart: unless-stopped
+    env_file: .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Cursos, biblioteca, fotos de perfil y gifs que suben los docentes.
+      # Persisten aunque se reconstruya o borre el contenedor.
+      - media:/app/media
+    ports:
+      # Solo para pruebas desde la propia miniPC (curl, admin sin Funnel).
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      # Pide la lista de cursos: comprueba gunicorn, Django y la conexion a MySQL.
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen(u.Request('http://127.0.0.1:8000/api/cursos/', headers={'X-Forwarded-Proto': 'https'}), timeout=10)"]
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build: ./ensenarte-frontend
+    image: ensenarte-frontend:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      # Tailscale Funnel apunta aqui: sudo tailscale funnel --bg 8080
+      - "127.0.0.1:8080:80"
+
+volumes:
+  media:

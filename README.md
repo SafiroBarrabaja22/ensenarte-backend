@@ -162,10 +162,11 @@ cambios distintos, el último `contenido.json` reemplaza al anterior.
 | `SECRET_KEY` | Clave criptográfica de Django. Obligatoria. | `k3f8...` |
 | `DEBUG` | Modo desarrollo. En producción debe ser `False`. | `True` |
 | `ALLOWED_HOSTS` | Dominios autorizados, separados por coma. | `localhost,127.0.0.1` |
-| `CORS_ALLOWED_ORIGINS` | Orígenes del frontend autorizados, separados por coma. Sin `*`, sin ruta ni barra final (si no, el backend no arranca). Ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md). | Desarrollo: `http://localhost:5500,http://127.0.0.1:5500` · Producción: `https://safirobarrabaja22.github.io` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes del frontend autorizados, separados por coma. Sin `*`, sin ruta ni barra final (si no, el backend no arranca). Ver [docs/SEGURIDAD.md](docs/SEGURIDAD.md). | Desarrollo: `http://localhost:5500,http://127.0.0.1:5500` · Producción (Docker): `https://<dominio>.ts.net` |
 | `JWT_ACCESO_MINUTOS` | Duración del token de acceso. Opcional. | `15` |
 | `JWT_REFRESCO_DIAS` | Duración del refresh token (se rota en cada uso). Opcional. | `7` |
-| `DATABASE_URL` | Cadena de conexión a la base de datos. | `sqlite:///db.sqlite3` |
+| `DATABASE_URL` | Cadena de conexión a la base de datos (si no hay `DB_NAME`). | `sqlite:///db.sqlite3` |
+| `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | MySQL por variables; si `DB_NAME` existe tiene prioridad sobre `DATABASE_URL`. Es lo que usa Docker. | `proyecto_v2`, …, `host.docker.internal`, `3306` |
 
 El archivo `.env` está en `.gitignore` y **nunca** debe subirse al repositorio.
 
@@ -490,13 +491,308 @@ curl http://127.0.0.1:8000/api/auth/perfil/ \
 
 ---
 
-## Despliegue
+## Despliegue con Docker
 
-Backend en una miniPC con Arch Linux (gunicorn como servicio de systemd,
-MySQL local y Tailscale Funnel) y frontend en GitHub Pages. Pasos exactos y
-lista completa de variables del `.env` de producción en
-[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). Para actualizar:
-`sudo bash despliegue/desplegar.sh`.
+La aplicación corre en la miniPC (CachyOS) con Docker y se publica con HTTPS por
+**Tailscale Funnel**. MySQL **no** está en Docker: es el que ya está instalado en
+la miniPC.
+
+```
+Navegador ──https──▶ Tailscale Funnel ──▶ 127.0.0.1:8080  frontend (nginx)
+                                                │  páginas, CSS, JS, assets
+                                                └─ /api/ /admin/ /media/ /static/ ──▶ backend:8000 (gunicorn)
+                                                                                          │
+                                                          host.docker.internal:3306 ◀──────┘  MySQL de la miniPC
+```
+
+- **Una sola entrada:** el nginx del frontend sirve las páginas y reenvía la API al
+  backend. Todo queda en el mismo dominio: no hay CORS, y la cámara de la
+  evaluación funciona porque va por HTTPS.
+- **Puertos solo locales:** el 8080 y el 8000 escuchan solo en `127.0.0.1`. Desde
+  fuera solo se entra por Funnel.
+- **Archivos de los docentes:** viven en el volumen `ensenarte_media`, que no se
+  pierde al reconstruir.
+- **Modelo de la cámara:** el reconocimiento corre en el navegador. El frontend carga
+  `assets/modelos/modelo_knn.json`, que entra en la imagen del frontend, y MediaPipe
+  desde su CDN. `ml/` (dataset, `landmarks.csv` y pruebas de ajuste) no se usa en tiempo
+  de ejecución y queda fuera de la imagen del backend. Si se reentrena el modelo, copia
+  el nuevo `ml/modelo_knn.json` a `ensenarte-frontend/assets/modelos/`.
+- **Archivos:**
+  - [Dockerfile](Dockerfile) y [.dockerignore](.dockerignore);
+  - [despliegue/docker-compose.yml](despliegue/docker-compose.yml);
+  - [despliegue/docker.env.example](despliegue/docker.env.example);
+  - el `Dockerfile` y el `docker/nginx.conf` del frontend.
+
+> El despliegue anterior (gunicorn como servicio de systemd, [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)
+> y `despliegue/desplegar.sh`) está **obsoleto**. Se conserva como referencia, pero no
+> lo uses junto con Docker: los dos ocupan el puerto 8000.
+
+### 1. Instalar Docker en la miniPC
+
+```bash
+sudo pacman -S --needed git docker docker-compose docker-buildx
+sudo systemctl enable --now docker
+sudo usermod -aG docker "$USER"     # luego cierra sesión y vuelve a entrar
+docker compose version
+```
+
+### 2. Apagar el despliegue anterior (si se instaló)
+
+```bash
+sudo systemctl disable --now ensenarte-backend   # detiene y quita del arranque el servicio viejo
+systemctl status ensenarte-backend --no-pager     # "inactive (dead)" o "could not be found": bien
+sudo tailscale funnel reset                       # borra el Funnel viejo, que apuntaba al 8000
+ss -ltn | grep -E ':(8000|8080) ' || echo "puertos 8000 y 8080 libres"
+```
+
+No hace falta borrar `/etc/systemd/system/ensenarte-backend.service`; deshabilitado no
+arranca.
+
+### 3. Preparar MySQL para la red de Docker
+
+El contenedor llega al MySQL de la miniPC por `host.docker.internal`, que es la IP del
+puente de Docker (normalmente `172.17.0.1`). La conexión llega desde una IP `172.x`.
+
+1. **Que el servicio esté encendido y arranque con la miniPC.** Esto va primero: si MySQL
+   está apagado, el 3306 aparece cerrado aunque `bind-address` esté bien.
+   ```bash
+   systemctl list-unit-files | grep -Ei 'mariadb|mysqld'   # nombre del servicio: mariadb o mysqld
+   systemctl status mariadb --no-pager                     # "inactive (dead)" o "disabled": está apagado
+   sudo systemctl enable --now mariadb                     # (o mysqld) lo enciende y lo deja en el arranque
+   systemctl is-enabled mariadb && systemctl is-active mariadb   # enabled / active
+   ```
+   Si no arranca, el motivo está en `journalctl -u mariadb -b --no-pager | tail -n 30`.
+2. **`bind-address` no puede ser solo `127.0.0.1`.** Con el servicio ya activo, mira dónde
+   escucha:
+   ```bash
+   sudo ss -ltnp | grep 3306
+   ```
+   - Si sale `127.0.0.1:3306`, edita `[mysqld]` en `/etc/my.cnf.d/server.cnf` (MariaDB)
+     o en `/etc/mysql/my.cnf` (MySQL), pon `bind-address = 0.0.0.0` y reinicia con
+     `sudo systemctl restart mariadb` (o `mysqld`).
+   - Si ya sale `0.0.0.0:3306` o `*:3306` (por ejemplo, porque el equipo se conecta por
+     Tailscale), no cambies nada.
+   - No uses `bind-address = 172.17.0.1`: al arrancar la miniPC, MySQL puede iniciar antes
+     que Docker, y entonces esa IP todavía no existe.
+3. **Firewall: el 3306 solo para Docker y Tailscale.** Con `bind-address = 0.0.0.0`, MySQL
+   escucha en todas las interfaces, también en la de la red local. El firewall deja entrar
+   al 3306 solo desde la red de Docker (`172.16.0.0/12`) y desde Tailscale (`100.64.0.0/10`
+   por la interfaz `tailscale0`), y bloquea el resto. Ver [Firewall para MySQL](#firewall-para-mysql).
+4. **El usuario de la aplicación debe poder entrar desde la red de Docker:**
+   ```sql
+   -- sudo mariadb   (o: mysql -u root -p)
+   CREATE USER '<usuario_bd>'@'172.%' IDENTIFIED BY '<clave_bd>';
+   GRANT ALL PRIVILEGES ON proyecto_v2.* TO '<usuario_bd>'@'172.%';
+   FLUSH PRIVILEGES;
+   ```
+   Si el usuario ya existe como `'<usuario_bd>'@'%'`, ya cubre `172.%` y no hace falta
+   crearlo de nuevo.
+
+#### Firewall para MySQL
+
+**Primero, mira cuál firewall está activo.** CachyOS trae **ufw** activado de fábrica,
+pero puede haberse cambiado:
+
+```bash
+systemctl is-active ufw firewalld nftables    # el que diga "active" es el que manda
+sudo ufw status verbose                       # ufw: "Status: active"
+sudo firewall-cmd --state                     # firewalld: "running"
+sudo nft list ruleset | head -n 40            # todos usan nftables por debajo; esto muestra las reglas
+```
+
+Usa solo **uno** de los tres bloques de abajo, el del firewall activo.
+
+- **Si los tres dicen `inactive`:** activa ufw. Pero si entras a la miniPC por SSH desde la
+  red local, permite el SSH antes de activarlo:
+  ```bash
+  sudo pacman -S --needed ufw
+  sudo ufw allow ssh
+  sudo systemctl enable --now ufw
+  sudo ufw enable
+  ```
+- **Los puertos 8080 y 8000 no necesitan reglas:** escuchan solo en `127.0.0.1`, y Funnel
+  entra por `tailscaled`, que es un proceso local.
+
+**ufw (lo normal en CachyOS)**
+
+```bash
+sudo ufw status numbered | grep 3306                                  # si hay un "3306 ALLOW Anywhere" viejo, bórralo:
+# sudo ufw delete <número>
+sudo ufw allow proto tcp from 172.16.0.0/12 to any port 3306 comment 'MySQL desde Docker'
+sudo ufw allow in on tailscale0 proto tcp from 100.64.0.0/10 to any port 3306 comment 'MySQL desde Tailscale'
+sudo ufw deny 3306/tcp                                                # todo lo demás
+sudo ufw status numbered                                              # las dos ALLOW antes que la DENY
+```
+
+ufw aplica las reglas en orden: las dos `ALLOW` deben salir con número menor que la
+`DENY`. Si la `DENY` quedó antes, bórrala y vuelve a crearla.
+
+**firewalld**
+
+```bash
+Z=$(sudo firewall-cmd --get-default-zone)                    # normalmente "public"
+sudo firewall-cmd --get-active-zones                          # ¿tailscale0 está en otra zona? usa esa en su regla
+sudo firewall-cmd --permanent --zone="$Z" --remove-service=mysql 2>/dev/null; true
+sudo firewall-cmd --permanent --zone="$Z" --remove-port=3306/tcp 2>/dev/null; true
+sudo firewall-cmd --permanent --zone="$Z" --add-rich-rule='rule family="ipv4" source address="172.16.0.0/12" port port="3306" protocol="tcp" accept'
+sudo firewall-cmd --permanent --zone="$Z" --add-rich-rule='rule family="ipv4" source address="100.64.0.0/10" port port="3306" protocol="tcp" accept'
+sudo firewall-cmd --reload
+sudo firewall-cmd --zone="$Z" --list-all                      # 3306 solo en las dos rich rules
+```
+
+- Así, lo que no coincide con las dos reglas cae en el rechazo por defecto de la zona.
+- Docker pone sus redes en su propia zona `docker`, que ya acepta el tráfico de los
+  contenedores. La regla de `172.16.0.0/12` cubre el caso en que no lo haga.
+
+**nftables a mano (sin ufw ni firewalld)**
+
+En `/etc/nftables.conf`, dentro de `chain input` de `table inet filter`, agrega estas
+reglas **antes** de la regla final de rechazo (`reject` o `counter drop`):
+
+```
+tcp dport 3306 ip saddr 172.16.0.0/12 accept comment "MySQL desde Docker"
+iifname "tailscale0" tcp dport 3306 ip saddr 100.64.0.0/10 accept comment "MySQL desde Tailscale"
+tcp dport 3306 drop comment "MySQL: nadie mas"
+```
+
+```bash
+sudo nft -c -f /etc/nftables.conf            # revisa la sintaxis sin aplicar nada
+sudo systemctl restart nftables
+sudo systemctl restart docker tailscaled     # el archivo empieza con "flush ruleset" y borra sus reglas
+cd /srv/ensenarte && docker compose up -d
+```
+
+**Comprobar (con cualquiera de los tres)**
+
+```bash
+# Desde el contenedor (cuando ya esté levantado, paso 5): debe decir "ok"
+docker compose exec backend python -c "import socket; socket.create_connection(('host.docker.internal', 3306), 3); print('ok')"
+# Desde otro equipo de la red local, SIN Tailscale: debe fallar (timeout o refused)
+nc -zv -w 3 <ip-lan-de-la-minipc> 3306
+# Desde un equipo de la tailnet: debe conectar
+nc -zv -w 3 <ip-100.x-de-la-minipc> 3306
+```
+
+### 4. Código y configuración
+
+> **Mientras Docker no esté mezclado en `main`**, la configuración vive en la rama `docker`
+> de los dos repositorios: clona con `-b docker`. Cuando se mezcle, pasa a `main` con
+> `git -C <repo> switch main && git -C <repo> pull` (paso 8) y desde entonces clona sin `-b`.
+
+```bash
+sudo mkdir -p /srv/ensenarte && sudo chown -R "$USER": /srv/ensenarte
+cd /srv/ensenarte
+git clone -b docker https://github.com/SafiroBarrabaja22/ensenarte-backend.git
+git clone -b docker https://github.com/SafiroBarrabaja22/ensenarte-frontend.git
+# Si ya estaban clonados: git -C <repo> fetch && git -C <repo> switch docker && git -C <repo> pull
+git -C ensenarte-backend branch --show-current && git -C ensenarte-frontend branch --show-current   # docker / docker
+cp ensenarte-backend/despliegue/docker-compose.yml .
+cp ensenarte-backend/despliegue/docker.env.example .env
+chmod 600 .env
+python3 -c "import secrets; print(secrets.token_urlsafe(64))"            # cópiala en SECRET_KEY
+nano .env                                                                # completa lo que va entre <...>
+```
+
+Debe quedar así:
+
+```
+/srv/ensenarte/
+├── docker-compose.yml
+├── .env
+├── ensenarte-backend/
+└── ensenarte-frontend/
+```
+
+Las variables están explicadas en `despliegue/docker.env.example` y en la tabla de
+[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). Las más importantes:
+
+| Variable | Valor |
+|---|---|
+| `DB_HOST` | `host.docker.internal` |
+| `NUM_PROXIES` | `2` (Funnel y nginx) |
+| `ALLOWED_HOSTS` | el dominio `.ts.net`, `localhost` y `127.0.0.1` |
+| `CSRF_TRUSTED_ORIGINS`, `CORS_ALLOWED_ORIGINS`, `URL_FRONTEND` | `https://<dominio>.ts.net` |
+
+### 5. Construir y levantar
+
+```bash
+cd /srv/ensenarte
+docker compose up -d --build
+docker compose ps                                                   # backend "healthy" al minuto
+docker compose exec backend python manage.py migrate
+docker compose exec backend python manage.py createsuperuser
+docker compose exec backend python manage.py check --deploy         # solo el aviso W021 (HSTS preload) es esperado
+```
+
+### 6. Publicar con HTTPS (Tailscale Funnel)
+
+```bash
+sudo tailscale funnel --bg 8080
+tailscale funnel status          # https://<maquina>.<tailnet>.ts.net (Funnel on) -> http://127.0.0.1:8080
+```
+
+En la consola de Tailscale de la tailnet dueña de la miniPC tienen que estar activos
+*HTTPS Certificates* y el permiso de Funnel para el nodo (ver la sección 1.8 de
+[docs/DESPLIEGUE.md](docs/DESPLIEGUE.md)). `--bg` deja la configuración guardada, así que
+sobrevive a los reinicios.
+
+### 7. Verificar
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/              # 200: página de inicio
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8080/api/cursos/   # 200: API por el proxy
+curl -sI https://<maquina>.<tailnet>.ts.net/admin/login/ | head -1            # desde otra red: 200
+```
+
+Después abre `https://<maquina>.<tailnet>.ts.net/` en el navegador. El admin está en
+`/admin/` (debe verse con estilos) y Swagger en `/api/docs/`.
+
+### 8. Actualizar
+
+```bash
+cd /srv/ensenarte
+git -C ensenarte-backend pull && git -C ensenarte-frontend pull   # trae la rama en la que estás (docker, o main después)
+# El día que Docker se mezcle en main, una sola vez:
+#   git -C ensenarte-backend switch main && git -C ensenarte-frontend switch main
+#   git -C ensenarte-backend pull && git -C ensenarte-frontend pull
+cp ensenarte-backend/despliegue/docker-compose.yml .     # por si cambió
+docker compose up -d --build
+docker compose exec backend python manage.py migrate
+```
+
+### 9. Operación
+
+| Para | Comando |
+|---|---|
+| Logs en vivo | `docker compose logs -f backend` (o `frontend`) |
+| Estado | `docker compose ps` |
+| Reiniciar | `docker compose restart backend` |
+| Apagar / encender | `docker compose down` / `docker compose up -d` (los datos de `media` se conservan) |
+| Respaldar la base | En la miniPC: `mysqldump -u <usuario_bd> -p --single-transaction --routines --triggers proyecto_v2 \| gzip > proyecto_v2-$(date +%F).sql.gz` |
+| Respaldar `media` | `docker run --rm -v ensenarte_media:/media -v "$PWD":/respaldo alpine tar czf /respaldo/media-$(date +%F).tgz -C /media .` |
+
+- **Primera vez:** el volumen `ensenarte_media` se llena con `media/biblioteca` y
+  `media/contenido` del repositorio.
+- **Después:** guarda lo que suben los docentes. Si llegan imágenes nuevas a esas
+  carpetas por git, cópialas al volumen:
+  `docker compose cp ensenarte-backend/media/biblioteca/. backend:/app/media/biblioteca/`.
+
+### Si algo falla
+
+| Síntoma | Dónde mirar | Causa probable |
+|---|---|---|
+| `docker compose up --build` falla en `pip install` con `mysql_config` / `pkg-config` | salida del build | No se instalaron `default-libmysqlclient-dev` y `pkg-config` (Dockerfile, etapa 1) |
+| Falla en `collectstatic` | salida del build | Error de `settings.py`; el mensaje dice qué variable falta |
+| `backend` reinicia una y otra vez | `docker compose logs backend` | `ImproperlyConfigured`: falta una variable en `.env` o `CORS_ALLOWED_ORIGINS`/`CSRF_TRUSTED_ORIGINS` llevan ruta o `*` |
+| `Can't connect to MySQL server on 'host.docker.internal'` | `docker compose logs backend` y `systemctl status mariadb` | MySQL apagado (`enable --now`), `bind-address` en `127.0.0.1`, o falta la regla del firewall para `172.16.0.0/12` (paso 3) |
+| `Access denied for user ...@'172.x.x.x'` | `docker compose logs backend` | Falta el usuario `'<usuario_bd>'@'172.%'` (paso 3) |
+| `backend` queda `unhealthy` | `docker inspect --format '{{json .State.Health}}' ensenarte-backend-1` | No conecta a MySQL, o `127.0.0.1` no está en `ALLOWED_HOSTS` |
+| 502 Bad Gateway en `/api/` | `docker compose logs frontend` | El backend no está corriendo o todavía arranca |
+| 400 Bad Request en todo | `docker compose logs backend` | El dominio no está en `ALLOWED_HOSTS` |
+| Error CSRF al entrar al admin | navegador | `CSRF_TRUSTED_ORIGINS` no es exactamente `https://<dominio>` |
+| La subida de un archivo falla con 413 | `docker compose logs frontend` | Supera los 12 MB que acepta nginx (`client_max_body_size`) |
+| Imágenes de los cursos rotas | `docker compose exec backend ls media/biblioteca` | El volumen se creó vacío: bórralo solo si no tiene subidas (`docker compose down -v`) y vuelve a levantar |
+| La cámara no abre | navegador | La página no se abrió por `https://` (Funnel) |
 
 ---
 

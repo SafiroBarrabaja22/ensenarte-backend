@@ -1,0 +1,47 @@
+# Lo que NO entra en la imagen del backend.
+
+# Secretos y datos locales (el .env real llega por env_file del compose)
+.env
+.env.*
+!.env.example
+*.sql
+*.sql.gz
+*.dump
+datos.json
+db.sqlite3*
+*.sqlite3
+
+# Git, entornos y caches
+.git
+.github
+.venv
+venv
+env
+__pycache__
+*.py[cod]
+.pytest_cache
+.coverage
+.coverage.*
+htmlcov
+staticfiles
+
+# Archivos subidos por los usuarios: viven en el volumen "media". Si se quedan
+# la biblioteca y el contenido versionados, que siembran el volumen la primera vez.
+media/*
+!media/biblioteca
+!media/contenido
+
+# No hacen falta para ejecutar la aplicacion
+ml
+tests
+docs
+scripts
+requirements-ci.*
+requirements-dev.txt
+pytest.ini
+.coveragerc
+*.md
+Dockerfile
+.dockerignore
+despliegue/docker-compose.yml
+despliegue/docker.env.example

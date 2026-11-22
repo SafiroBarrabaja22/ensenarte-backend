@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# OBSOLETO desde el despliegue con Docker (README.md, "Despliegue con Docker").
+# Se conserva como referencia; no lo uses junto con Docker: los dos ocupan el puerto 8000.
 # Despliega la ultima version del backend en la miniPC (Arch Linux).
 # Guia completa: docs/DESPLIEGUE.md
 #

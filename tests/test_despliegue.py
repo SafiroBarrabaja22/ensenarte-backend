@@ -81,3 +81,45 @@ def test_whitenoise_va_despues_de_security_middleware():
     assert middleware.index("whitenoise.middleware.WhiteNoiseMiddleware") == (
         middleware.index("django.middleware.security.SecurityMiddleware") + 1
     )
+
+
+# ------------------------------------------------------------------ Base de datos por variables (Docker)
+
+
+def _bases_con(entorno):
+    """DATABASES de config.settings cargado en un proceso aparte con ese entorno."""
+    import json
+    import os
+    import subprocess
+    import sys
+
+    variables = {k: v for k, v in os.environ.items() if not k.startswith(("DB_", "DATABASE_URL"))}
+    variables.update({"SECRET_KEY": "x", "DEBUG": "True", **entorno})
+    codigo = (
+        "import json, django, os; os.environ['DJANGO_SETTINGS_MODULE']='config.settings';"
+        "from django.conf import settings; d = settings.DATABASES['default'];"
+        "print(json.dumps({k: str(d.get(k)) for k in ('ENGINE','NAME','USER','HOST','PORT')}))"
+    )
+    salida = subprocess.run([sys.executable, "-c", codigo], env=variables, capture_output=True, text=True,
+                            cwd=Path(__file__).resolve().parent.parent, check=True)
+    return json.loads(salida.stdout.strip().splitlines()[-1])
+
+
+def test_db_name_arma_la_conexion_mysql_por_variables():
+    bd = _bases_con({"DB_NAME": "ensenarte", "DB_USER": "app", "DB_PASSWORD": "x",
+                     "DB_HOST": "host.docker.internal", "DB_PORT": "3307", "DATABASE_URL": "sqlite:///otra.sqlite3"})
+    assert bd == {"ENGINE": "django.db.backends.mysql", "NAME": "ensenarte", "USER": "app",
+                  "HOST": "host.docker.internal", "PORT": "3307"}
+
+
+def test_sin_db_name_sigue_usando_database_url():
+    bd = _bases_con({"DB_NAME": "", "DATABASE_URL": "mysql://dev:x@127.0.0.1:3306/proyecto_local"})
+    assert bd["ENGINE"] == "django.db.backends.mysql" and bd["NAME"] == "proyecto_local"
+
+
+def test_las_pruebas_ignoran_db_name_del_entorno():
+    """settings_pruebas.py vacia DB_NAME: las pruebas nunca van a la base del .env."""
+    assert settings.DATABASES["default"]["ENGINE"] != "django.db.backends.mysql" or \
+        settings.DATABASES["default"]["NAME"] not in {"proyecto_v2"}
+    import os
+    assert os.environ.get("DB_NAME") == ""

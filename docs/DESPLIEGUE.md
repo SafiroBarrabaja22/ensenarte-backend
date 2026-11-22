@@ -1,5 +1,11 @@
 # Despliegue de enSEÑArte
 
+> **OBSOLETO.** Esta guía (gunicorn como servicio de systemd y frontend en GitHub
+> Pages) se reemplazó por el **despliegue con Docker**: ver la sección "Despliegue con
+> Docker" del [README](../README.md). Se conserva como referencia: la configuración de
+> Gmail (1.5.1), la tabla de variables y los problemas comunes siguen siendo válidos.
+> No uses el servicio de systemd junto con Docker: los dos ocupan el puerto 8000.
+
 Esta guía publica enSEÑArte en dos partes:
 
 | Parte | Dónde | URL pública |

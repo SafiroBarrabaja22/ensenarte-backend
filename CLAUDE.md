@@ -267,7 +267,7 @@ Explicación en lenguaje llano: [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 - `POST /api/auth/logout/` (`TokenBlacklistView`, AllowAny) recibe `{"refresh"}`
   y lo invalida.
 - CORS: `CORS_ALLOWED_ORIGINS` sale de la variable de entorno (por defecto los
-  dos orígenes de `:5500`; producción `https://safirobarrabaja22.github.io`).
+  dos orígenes de `:5500`; en Docker, el dominio `.ts.net`, el mismo de la API).
   `validar_origenes_cors` en `settings.py` detiene el arranque si hay `*`,
   `null`, ruta o barra final. `CORS_ALLOW_ALL_ORIGINS = False` y no hay regexes.
 - Pruebas: [apps/usuarios/tests_seguridad.py](apps/usuarios/tests_seguridad.py).
@@ -330,10 +330,17 @@ Explicación en lenguaje llano: [docs/SEGURIDAD.md](docs/SEGURIDAD.md).
 
 ## Despliegue
 
-Guía completa en [docs/DESPLIEGUE.md](docs/DESPLIEGUE.md). Backend en una miniPC Arch
-(`/srv/ensenarte/ensenarte-backend`, usuario `ensenarte`, Python 3.12 con `uv`), gunicorn en
-`127.0.0.1:8000` como servicio systemd y Tailscale Funnel en `https://cachyos-x8664.tailb93c3e.ts.net`.
-MySQL en la misma máquina (`localhost`). WhiteNoise sirve `/static/` (`CompressedManifestStaticFilesStorage`:
+**Docker** (README, "Despliegue con Docker"): `Dockerfile` (python:3.12-slim en dos etapas,
+gunicorn, `collectstatic` en el build, usuario sin root), `despliegue/docker-compose.yml`
+(se copia a la carpeta que contiene los dos repos) y `despliegue/docker.env.example`.
+- **Una sola entrada:** el nginx del frontend (`127.0.0.1:8080`, Tailscale Funnel) reenvía
+  `/api/ /admin/ /media/ /static/` al backend (`127.0.0.1:8000`); todo en el mismo dominio.
+- **MySQL** de la miniPC por `DB_HOST=host.docker.internal`.
+- **Configuración:** `DB_*` tiene prioridad sobre `DATABASE_URL` (`settings_pruebas.py` vacía
+  `DB_NAME` para que las pruebas nunca la usen). `NUM_PROXIES=2` (Funnel + nginx).
+- **Archivos subidos:** `media` es un volumen.
+
+El despliegue con systemd (`despliegue/desplegar.sh`, `docs/DESPLIEGUE.md`) está obsoleto. WhiteNoise sirve `/static/` (`CompressedManifestStaticFilesStorage`:
 exige `collectstatic`; `settings_pruebas.py` usa el almacenamiento normal). Con `DEBUG=False` los logs
 van a la salida estándar (journal). Actualizar: `sudo bash despliegue/desplegar.sh`.
 Pruebas de esta configuración: [tests/test_despliegue.py](tests/test_despliegue.py).

@@ -15,6 +15,10 @@ import tempfile
 # contra MySQL (proyecto_pruebas; ver README). Es otra variable a proposito: un
 # DATABASE_URL de desarrollo nunca debe terminar en las pruebas.
 os.environ["DATABASE_URL"] = os.environ.get("PRUEBAS_DATABASE_URL", "sqlite://:memory:")
+# settings.py le da prioridad a DB_NAME (Docker) sobre DATABASE_URL. Vaciarlo
+# aqui hace que las pruebas usen SIEMPRE la base de arriba, aunque el entorno o
+# el .env tengan DB_NAME=proyecto_v2 (django-environ no pisa lo ya definido).
+os.environ["DB_NAME"] = ""
 
 # Bases compartidas a las que las pruebas NUNCA deben conectarse (Django crearia
 # test_<nombre> en ese servidor). Se puede ampliar con BASES_PROTEGIDAS=a,b.

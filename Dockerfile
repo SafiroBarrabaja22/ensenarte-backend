@@ -23,8 +23,19 @@ RUN apt-get update \
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Dependencias fijadas con hash (requirements-docker.txt, generado desde
+# requirements.txt): pip rechaza cualquier archivo que no coincida.
+# - --only-binary :all:: solo paquetes precompilados, sin ejecutar scripts de
+#   instalacion. Unica excepcion: mysqlclient, que no publica version
+#   precompilada para Linux y se compila desde su codigo fuente, tambien
+#   verificado por hash.
+# - --no-build-isolation: para compilar mysqlclient se usa el setuptools ya
+#   instalado y verificado (requirements-compilacion.txt), no uno descargado
+#   sin verificar.
+COPY requirements-compilacion.txt requirements-docker.txt ./
+RUN pip install --require-hashes --only-binary :all: -r requirements-compilacion.txt \
+    && pip install --require-hashes --only-binary :all: --no-binary mysqlclient \
+        --no-build-isolation -r requirements-docker.txt
 
 
 # ------------------------------------------------------------------ 2. Ejecucion
@@ -45,7 +56,13 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=compilacion /opt/venv /opt/venv
-COPY --chown=ensenarte:ensenarte . .
+# Solo lo que la aplicacion necesita para correr, carpeta por carpeta: nada de
+# copiar el directorio completo (podria colar un .env o una base de datos).
+COPY --chown=ensenarte:ensenarte manage.py ./
+COPY --chown=ensenarte:ensenarte config/ config/
+COPY --chown=ensenarte:ensenarte apps/ apps/
+COPY --chown=ensenarte:ensenarte media/biblioteca/ media/biblioteca/
+COPY --chown=ensenarte:ensenarte media/contenido/ media/contenido/
 
 # Estaticos del admin, DRF y Swagger (los sirve WhiteNoise). collectstatic no
 # toca la base de datos; SECRET_KEY y DATABASE_URL solo existen en este paso

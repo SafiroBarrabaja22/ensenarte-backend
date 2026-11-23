@@ -1,0 +1,9 @@
+# Entrada de requirements-compilacion.txt: lo que necesita el Dockerfile para
+# compilar mysqlclient, el unico paquete sin version precompilada para Linux.
+# Se instala ANTES que requirements-docker.txt y mysqlclient se compila con
+# --no-build-isolation, para que pip no descargue setuptools sin verificar.
+# Para regenerarlo:
+#
+#   uv pip compile requirements-compilacion.in --universal --python-version 3.12 \
+#       --generate-hashes -o requirements-compilacion.txt
+setuptools==80.9.0

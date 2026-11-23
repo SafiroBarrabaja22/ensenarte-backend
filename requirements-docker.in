@@ -1,0 +1,9 @@
+# Entrada de requirements-docker.txt: lo que instala la imagen de Docker, con
+# versiones exactas y hashes (pip install --require-hashes). Para regenerarlo
+# despues de cambiar requirements.txt:
+#
+#   uv pip compile requirements-docker.in --universal --python-version 3.12 \
+#       --generate-hashes -o requirements-docker.txt
+#
+# La herramienta para compilar mysqlclient va aparte, en requirements-compilacion.in.
+-r requirements.txt

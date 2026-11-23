@@ -51,7 +51,8 @@ services:
       - backend
     ports:
       # Tailscale Funnel apunta aqui: sudo tailscale funnel --bg 8080
-      - "127.0.0.1:8080:80"
+      # (nginx corre sin root y escucha en el 8080 del contenedor).
+      - "127.0.0.1:8080:8080"
 
 volumes:
   media:

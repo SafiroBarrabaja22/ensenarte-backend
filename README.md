@@ -333,7 +333,9 @@ push y en cada pull request, en `main` y en cualquier rama de trabajo. Hace esto
 2. Comprueba que `requirements-ci.txt` esté al día e instala esas dependencias: versiones
    exactas con hash (`--require-hashes`) y solo paquetes precompilados (`--only-binary :all:`).
    Si cambias `requirements.txt` o `requirements-dev.txt`, regenera `requirements-ci.txt` con
-   el comando de la cabecera de `requirements-ci.in`.
+   el comando de la cabecera de `requirements-ci.in`. Si cambias `requirements.txt`, regenera
+   también `requirements-docker.txt`, el que instala el Dockerfile (comando en la cabecera de
+   `requirements-docker.in`); el mismo paso de la CI lo revisa.
 3. Corre `manage.py check` y `makemigrations --check`: falla si alguien cambió
    un modelo sin generar su migración.
 4. Corre `pytest` con cobertura, y falla si baja de **70 %**.

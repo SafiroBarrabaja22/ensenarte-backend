@@ -351,7 +351,17 @@ La CI instala `requirements-ci.txt` (generado con `uv pip compile` desde `requir
 todas las dependencias con hash, solo ruedas precompiladas y sin `mysqlclient`.
 `scripts/verificar_requirements_ci.py` falla si no coincide con `requirements.txt` /
 `requirements-dev.txt`: **al cambiar una versión, regenera `requirements-ci.txt`** (comando en
-la cabecera de `requirements-ci.in`).
+la cabecera de `requirements-ci.in`) **y `requirements-docker.txt`** (cabecera de
+`requirements-docker.in`). El script también revisa esos dos.
+
+**Dockerfiles (reglas de SonarQube):**
+- **Backend:** instala `requirements-compilacion.txt` (setuptools) y después
+  `requirements-docker.txt`, con `--require-hashes --only-binary :all:`. Solo `mysqlclient` se
+  compila (`--no-binary mysqlclient --no-build-isolation`), porque no tiene versión
+  precompilada para Linux.
+- **Backend:** copia carpeta por carpeta (`manage.py`, `config/`, `apps/`,
+  `media/biblioteca|contenido`), nunca `COPY . .`.
+- **Frontend:** usa `nginxinc/nginx-unprivileged` (sin root, escucha en el 8080 del contenedor).
 
 SonarQube Cloud analiza `main`. Reglas que ya nos marcó y conviene no repetir:
 - Sin contraseñas escritas en el código, ni en pruebas: usa `secrets.token_urlsafe()`.

@@ -46,10 +46,10 @@ def ids_visibles(cliente, **filtros):
 # ------------------------------------------------------------------ Rol
 
 
-def test_el_validador_tiene_su_rol_y_puede_aprender(como, validador):
+def test_el_validador_tiene_su_rol_y_no_hace_cursos(como, validador):
     cliente = como(validador)
-    assert ROL_VALIDADOR in cliente.get("/api/auth/perfil/").data["roles"]
-    assert cliente.get("/api/progreso/").status_code == 200
+    assert cliente.get("/api/auth/perfil/").data["roles"] == [ROL_VALIDADOR]
+    assert cliente.get("/api/progreso/").status_code == 403
 
 
 # ------------------------------------------------------------------ Estado inicial

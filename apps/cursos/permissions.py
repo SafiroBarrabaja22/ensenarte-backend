@@ -5,15 +5,17 @@ Hay una clase por rol (EsEstudiante, EsProfesor, EsInterprete,
 EsCreadorDeCursos, EsAdministrador) y, al final, las combinaciones que usan las
 vistas. Los nombres de los grupos vienen de apps/usuarios/roles.py.
 
-Alcance de cada rol:
-- Estudiante: catalogo, diccionario, evaluaciones y su progreso.
-- Profesor: lo anterior + crea cursos y administra el contenido SOLO de los
-  cursos que el creo (permiso a nivel de objeto).
-- Interprete: lo de Estudiante + biblioteca visual y gifs de cualquier curso.
-- CreadorDeCursos: lo de Estudiante + contenido de TODOS los cursos.
-- Validador: lo de Estudiante + aprueba o rechaza las senas (gifs de la
-  biblioteca). Es el UNICO que puede hacerlo.
-- Administrador (grupo o superusuario): todo, menos validar senas.
+Alcance de cada rol (cada uno ve SOLO su seccion; todos conservan su perfil):
+- Estudiante: el UNICO que hace cursos (diccionario, evaluaciones, progreso).
+- Profesor: crea cursos y administra el contenido SOLO de los cursos que el
+  creo (permiso a nivel de objeto), con vista previa en el panel.
+- Interprete: biblioteca visual y gifs de cualquier curso.
+- CreadorDeCursos: contenido de TODOS los cursos.
+- Validador: aprueba o rechaza las senas (gifs de la biblioteca). Es el UNICO
+  que puede hacerlo.
+- Administrador (grupo o superusuario): panel de cursos y biblioteca; no hace
+  cursos ni valida senas.
+Un rol de trabajo anula el grupo Estudiante (roles.ROLES_DE_TRABAJO).
 """
 
 from rest_framework.exceptions import PermissionDenied
@@ -46,7 +48,7 @@ class PermisoPorRol(BasePermission):
 
 class EsEstudiante(PermisoPorRol):
     rol = ROL_ESTUDIANTE
-    message = "Esta accion requiere el rol Estudiante."
+    message = "Solo los estudiantes pueden hacer los cursos."
 
 
 class EsProfesor(PermisoPorRol):
@@ -132,11 +134,11 @@ class EsDuenoDelCurso(BasePermission):
 # Combinaciones que usan las vistas
 # ----------------------------------------------------------------------
 
-# Cualquier rol puede estudiar (los profesores revisan sus cursos como alumnos).
-PUEDE_APRENDER = (
-    EsEstudiante | EsProfesor | EsInterprete | EsCreadorDeCursos | EsAdministrador
-    | EsValidador
-)
+# Solo el Estudiante hace cursos (diccionario, evaluaciones, progreso, constancia).
+# Ningun rol de trabajo entra, aunque conserve el grupo Estudiante: roles_de() lo
+# descarta (apps/usuarios/roles.py, ROLES_DE_TRABAJO). El Profesor revisa sus
+# cursos con la vista previa del panel, no como alumno.
+PUEDE_APRENDER = EsEstudiante
 
 # Ver el estado de las senas y su historial de revisiones: quien las sube,
 # quien las revisa y el Administrador.

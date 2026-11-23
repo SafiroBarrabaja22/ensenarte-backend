@@ -182,20 +182,32 @@ ni correr ningún comando. Un usuario puede tener varios roles.
 | Rol (grupo) | Cómo se asigna | Puede |
 |---|---|---|
 | Visitante | Sin cuenta | Ver el catálogo de cursos |
-| `Estudiante` | Automático al registrarse en `/api/auth/registro/` | Diccionario, evaluaciones (preguntas y cámara), progreso, perfil |
-| `Profesor` | Admin de Django → Usuarios → Grupos | Lo de Estudiante + crear cursos y administrar **solo los suyos** (preguntas, opciones, diccionario, gifs), resumen y estrellas |
-| `Interprete` | Admin de Django | Lo de Estudiante + biblioteca visual (recursos, avatares, insignias) y gifs de cualquier curso |
-| `Validador` | Admin de Django | Lo de Estudiante + **aprobar o rechazar** (con comentario) las señas que sube el Intérprete. Es el **único** que puede hacerlo ([Validación de señas](#validación-de-señas)) |
-| `CreadorDeCursos` | Admin de Django | Lo de Estudiante + administrar el contenido de **todos** los cursos |
-| `Administrador` | Admin de Django, o ser superusuario | Todo, menos validar señas |
+| `Estudiante` | Automático al registrarse en `/api/auth/registro/` | El **único** que hace cursos: diccionario, evaluaciones (preguntas y cámara), progreso, constancias y perfil |
+| `Profesor` | Admin de Django → Usuarios → Grupos | Solo su panel: crear cursos y administrar **solo los suyos** (preguntas, opciones, diccionario, gifs), vista previa, resumen y estrellas |
+| `Interprete` | Admin de Django | Solo la biblioteca visual (recursos, avatares, insignias) y gifs de cualquier curso |
+| `Validador` | Admin de Django | Solo **aprobar o rechazar** (con comentario) las señas que sube el Intérprete. Es el **único** que puede hacerlo ([Validación de señas](#validación-de-señas)) |
+| `CreadorDeCursos` | Admin de Django | Solo el panel, con el contenido de **todos** los cursos |
+| `Administrador` | Admin de Django, o ser superusuario | Panel de cursos y biblioteca. No hace cursos ni valida señas |
+
+**Cada rol ve solo lo suyo.**
+- **Cursos:** solo el Estudiante los hace. Los demás roles reciben 403 en la API y las
+  páginas de cursos los envían a su sección.
+- **Todos conservan:** "Mi cuenta" (nombre, correo, avatar y contraseña) y cerrar sesión.
+- **El rol de trabajo manda:** al registrarse todos reciben `Estudiante`. Si después el
+  admin les da un rol de trabajo (Profesor, Intérprete, Validador, CreadorDeCursos o
+  Administrador), su `Estudiante` deja de contar, aunque siga asignado en el admin
+  (`ROLES_DE_TRABAJO` en `apps/usuarios/roles.py`).
+- **Vista previa del Profesor:** "Vista previa" en el panel muestra el diccionario de su
+  curso como lo ve el estudiante, sin evaluaciones ni progreso.
 
 `is_staff` por sí solo ya no da ningún rol: solo permite entrar al admin de
 Django. La migración pasó a `Administrador` a los usuarios staff que ya
 existían, y a `Estudiante` a las cuentas que no tenían ningún rol.
 
-El perfil (`GET /api/auth/perfil/` y la respuesta del login) devuelve
-`"roles": ["Profesor", "Estudiante"]`. Un usuario autenticado sin ningún rol
-recibe **403** en todo, salvo su perfil y el cambio de contraseña.
+El perfil (`GET /api/auth/perfil/` y la respuesta del login) devuelve los roles que
+cuentan, por ejemplo `"roles": ["Profesor"]` aunque la cuenta conserve el grupo
+Estudiante. Un usuario autenticado sin ningún rol recibe **403** en todo, salvo su
+perfil y el cambio de contraseña.
 
 ### Rol contra endpoint
 
@@ -206,9 +218,10 @@ recibe **403** en todo, salvo su perfil y el cambio de contraseña.
 | `POST auth/registro/`, `auth/login/`, `auth/refresh/`, `auth/verify/`, `auth/recuperar/*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `GET/PATCH auth/perfil/`, `POST auth/cambiar-password/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | `GET cursos/`, `GET cursos/<slug>/` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET cursos/<slug>/diccionario/`, `GET progreso/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `cursos/<slug>/evaluacion/*` (iniciar, actual, responder, resultado, historial) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET/POST evaluacion-camara/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET cursos/<slug>/diccionario/`, `GET progreso/` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `cursos/<slug>/evaluacion/*` (iniciar, actual, responder, resultado, historial) | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `GET/POST evaluacion-camara/` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| `GET reportes/constancia/<slug>/`, `GET reportes/historial/<slug>/` | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | `GET panel/resumen/`, `GET panel/estudiantes/estrellas/` | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
 | `GET panel/cursos/` (listado) | ❌ | ❌ | 🔸 | ❌ | ❌ | ✅ | ✅ |
 | `POST panel/cursos/` | ❌ | ❌ | ✅ (queda como dueño) | ❌ | ❌ | ✅ | ✅ |
@@ -461,10 +474,10 @@ WeasyPrint, que necesita GTK en Windows). Cada reporte se pide con
 
 | Reporte | Endpoint | Quién |
 |---|---|---|
-| Constancia de curso completado | `GET /api/reportes/constancia/<slug>/` | El propio estudiante (cualquier rol), solo si completó el curso |
+| Constancia de curso completado | `GET /api/reportes/constancia/<slug>/` | El propio estudiante (solo rol Estudiante), si completó el curso |
 | Progreso de los estudiantes de un curso | `GET /api/reportes/cursos/<id>/progreso/` | Profesor (solo sus cursos), CreadorDeCursos, Administrador |
 | Estadísticas de la plataforma | `GET /api/reportes/plataforma/` | Administrador. Usa los procedimientos `estadisticas_curso` y `ranking_estudiantes`: solo con MySQL (si no, 503) |
-| Historial de intentos de una evaluación (solo PDF) | `GET /api/reportes/historial/<slug>/?tipo=preguntas\|camara` | El propio estudiante (cualquier rol). Botón "Exportar PDF" en la tarjeta "Tu progreso" de cada evaluación; mismo título y diseño que la página |
+| Historial de intentos de una evaluación (solo PDF) | `GET /api/reportes/historial/<slug>/?tipo=preguntas\|camara` | El propio estudiante (solo rol Estudiante). Botón "Exportar PDF" en la tarjeta "Tu progreso" de cada evaluación; mismo título y diseño que la página |
 
 Formato común: logo arriba, título, fecha de generación, tipografía Helvetica
 (PDF) / Arial (Excel), encabezados de tabla teal, filas alternadas y

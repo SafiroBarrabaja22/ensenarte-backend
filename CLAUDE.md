@@ -194,8 +194,10 @@ Rutas raíz en [config/urls.py](config/urls.py). Permiso por defecto de DRF:
 | POST | `archivos/` (campo `archivo`, imagen ≤10 MB → `media/contenido/`) | Admin, Creador, Interprete, Profesor |
 
 Las rutas de aprendizaje (`diccionario`, `progreso`, `evaluacion/*`,
-`evaluacion-camara/`) exigen `PUEDE_APRENDER`, es decir, cualquier rol: un
-usuario autenticado sin rol recibe 403.
+`evaluacion-camara/`, y los reportes `constancia` e `historial`) exigen `PUEDE_APRENDER`,
+es decir, **solo el rol Estudiante**. **Cada rol ve solo lo suyo:** ningún rol de trabajo
+hace cursos, y un rol de trabajo anula el grupo Estudiante (`ROLES_DE_TRABAJO` en
+`roles.py`; `roles_de()` lo descarta). Un usuario sin rol recibe 403.
 
 Además: `/admin/` (admin de Django) y `/media/`, servido por `config/media.py` en desarrollo y en
 producción (`SERVIR_MEDIA`, con `Content-Security-Policy: sandbox` para que un archivo subido no

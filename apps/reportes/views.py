@@ -85,7 +85,7 @@ NOTA_DESCARGA = (
     tags=[ETIQUETA_REPORTES],
     summary="Constancia de curso completado",
     description="Constancia del usuario autenticado para un curso que ya completó (PDF horizontal "
-    "con marco, o Excel). Cualquier rol con acceso a cursos." + NOTA_DESCARGA,
+    "con marco, o Excel). Solo **Estudiante**." + NOTA_DESCARGA,
     parameters=[PARAM_SLUG, PARAM_FORMATO],
     responses=respuestas(
         ARCHIVOS, ERROR_FORMATO, error_401(),
@@ -180,8 +180,8 @@ PARAM_TIPO_HISTORIAL = OpenApiParameter(
     description="PDF con las últimas 5 sesiones **del usuario autenticado** en la evaluación del "
     "curso, con el mismo diseño de la tarjeta \"Tu progreso\" de la página: anillo con la "
     "última sesión, comparación con la anterior, gráfica \"Tus últimos intentos\", tarjetas "
-    "por sesión y tabla de detalle. Nunca incluye datos de otros usuarios. Cualquier rol con "
-    "acceso a cursos." + NOTA_DESCARGA,
+    "por sesión y tabla de detalle. Nunca incluye datos de otros usuarios. Solo "
+    "**Estudiante**." + NOTA_DESCARGA,
     parameters=[PARAM_SLUG, PARAM_TIPO_HISTORIAL],
     responses=respuestas(
         {(200, TIPO_PDF): OpenApiResponse(OpenApiTypes.BINARY, description="Historial en PDF.")},

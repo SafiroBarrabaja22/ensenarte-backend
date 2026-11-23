@@ -92,11 +92,13 @@ class RolesTests(APITestCase):
         self.client.force_authenticate(None)
         self.assertEqual(self.client.get("/api/cursos/").status_code, status.HTTP_200_OK)
 
-    def test_cualquier_rol_puede_aprender(self):
+    def test_solo_el_estudiante_puede_aprender(self):
+        """Cada rol ve solo lo suyo: ningun rol de trabajo hace cursos."""
         for nombre in self.usuarios:
             self.como(nombre)
             respuesta = self.client.get("/api/progreso/")
-            self.assertEqual(respuesta.status_code, status.HTTP_200_OK, nombre)
+            esperado = status.HTTP_200_OK if nombre == "estudiante" else status.HTTP_403_FORBIDDEN
+            self.assertEqual(respuesta.status_code, esperado, nombre)
 
     def test_usuario_sin_rol_no_puede_aprender(self):
         self.client.force_authenticate(self.sin_rol)

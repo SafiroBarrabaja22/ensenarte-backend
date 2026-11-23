@@ -160,10 +160,11 @@ def test_aprobar_con_camara_tambien_avisa_al_profesor(como, estudiante, curso, m
     assert len(correos_para(mailoutbox, "profesor@correo.com")) == 1
 
 
-def test_el_profesor_no_se_avisa_a_si_mismo(como, profesor, curso, mailoutbox, django_capture_on_commit_callbacks):
-    with django_capture_on_commit_callbacks(execute=True):
-        terminar_evaluacion(como(profesor))
-    assert [c.subject for c in mailoutbox] == ["Tus resultados en Abecedario"]
+def test_el_profesor_no_se_avisa_a_si_mismo(profesor, curso, mailoutbox):
+    # Un Profesor ya no hace cursos (solo el Estudiante), pero el aviso sigue
+    # protegido por si la cuenta del dueno aparece como quien completo el curso.
+    assert servicio.avisar_curso_completado(curso, profesor) is False
+    assert mailoutbox == []
 
 
 def test_curso_sin_profesor_no_envia_aviso(estudiante, crear_curso, mailoutbox):

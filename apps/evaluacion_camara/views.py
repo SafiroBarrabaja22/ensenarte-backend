@@ -33,7 +33,7 @@ EJEMPLO_SESION = {
     "insignia_100": None,
 }
 
-ROLES = "Cualquier rol (Estudiante, Profesor, Interprete, Validador, CreadorDeCursos, Administrador)."
+ROLES = "Solo **Estudiante** (una cuenta con un rol de trabajo no cuenta como estudiante)."
 ERROR_SIN_ROL = error_403(descripcion="El usuario no tiene ningún rol asignado.")
 
 

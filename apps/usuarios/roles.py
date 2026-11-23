@@ -33,6 +33,11 @@ TODOS_LOS_ROLES = (
 # Roles que administran el contenido de TODOS los cursos (no solo los propios).
 ROLES_GESTION_GLOBAL = (ROL_ADMINISTRADOR, ROL_CREADOR)
 
+# Roles de trabajo: cada uno ve solo su seccion y NINGUNO hace cursos. Si una
+# cuenta tiene alguno, su grupo Estudiante no cuenta (al registrarse todos
+# reciben Estudiante y lo conservan cuando el admin les da otro rol).
+ROLES_DE_TRABAJO = (ROL_ADMINISTRADOR, ROL_CREADOR, ROL_PROFESOR, ROL_VALIDADOR, ROL_INTERPRETE)
+
 _CACHE = "_roles_ensenarte"
 
 
@@ -42,8 +47,10 @@ def roles_de(usuario):
 
     Un superusuario siempre tiene el rol Administrador aunque no este en el
     grupo. `is_staff` por si solo NO da ningun rol: solo habilita el admin de
-    Django. El resultado se guarda en el objeto para no consultar la base de
-    datos en cada permiso de la misma peticion.
+    Django. Si la cuenta tiene un rol de trabajo (ROLES_DE_TRABAJO), Estudiante
+    no se incluye: solo un estudiante puro hace cursos. El resultado se guarda
+    en el objeto para no consultar la base de datos en cada permiso de la
+    misma peticion.
     """
     if usuario is None or not usuario.is_authenticated:
         return []
@@ -56,6 +63,8 @@ def roles_de(usuario):
         )
         if usuario.is_superuser:
             nombres.add(ROL_ADMINISTRADOR)
+        if nombres & set(ROLES_DE_TRABAJO):
+            nombres.discard(ROL_ESTUDIANTE)
         roles = [rol for rol in TODOS_LOS_ROLES if rol in nombres]
         setattr(usuario, _CACHE, roles)
     return roles

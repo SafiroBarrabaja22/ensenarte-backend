@@ -110,7 +110,7 @@ HistorialItemSerializer = inline_serializer(
     many=True,
 )
 
-ROLES_APRENDIZAJE = "Cualquier rol (Estudiante, Profesor, Interprete, Validador, CreadorDeCursos, Administrador)."
+ROLES_APRENDIZAJE = "Solo **Estudiante** (una cuenta con un rol de trabajo no cuenta como estudiante)."
 
 
 # ==========================================================

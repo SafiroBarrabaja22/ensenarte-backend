@@ -45,6 +45,22 @@ DENEGADOS = [
     ("sin_rol", "get", "/api/progreso/", None, "Estudiante"),
     ("sin_rol", "post", "/api/cursos/saludos/evaluacion/iniciar/", None, "Estudiante"),
     ("sin_rol", "get", "/api/evaluacion-camara/", None, "Estudiante"),
+    # Roles de trabajo -> los cursos son solo del Estudiante (cada rol ve solo lo suyo)
+    *[
+        (rol, metodo, ruta, None, "Estudiante")
+        for rol in ("profesor", "interprete", "validador", "creador", "administrador")
+        for metodo, ruta in (
+            ("get", "/api/progreso/"),
+            ("get", "/api/cursos/saludos/diccionario/"),
+            ("post", "/api/cursos/saludos/evaluacion/iniciar/"),
+            ("get", "/api/evaluacion-camara/"),
+            ("get", "/api/reportes/historial/saludos/"),
+            ("get", "/api/reportes/constancia/saludos/"),
+        )
+    ],
+    # Validador -> nada del panel fuera de validar
+    ("validador", "get", "/api/panel/cursos/", None, "Profesor"),
+    ("validador", "post", "/api/panel/recursos/", {"nombre": "x"}, "Interprete"),
 ]
 
 
@@ -85,8 +101,23 @@ def test_estudiante_solo_lee_avatares_de_la_biblioteca(como, estudiante, adminis
     assert [r["nombre"] for r in respuesta.data] == ["Avatar"]
 
 
+def test_un_rol_de_trabajo_no_hace_cursos_aunque_conserve_el_grupo_estudiante(como, crear_usuario, curso_ajeno):
+    """Al registrarse todos son Estudiante; si despues reciben Profesor, ya no hacen cursos."""
+    from apps.usuarios.roles import ROL_ESTUDIANTE, ROL_PROFESOR, asignar_rol
+
+    usuario = crear_usuario(ROL_ESTUDIANTE, "registrado")
+    assert como(usuario).get("/api/progreso/").status_code == 200
+    asignar_rol(usuario, ROL_PROFESOR)
+    usuario.refresh_from_db()
+    assert como(usuario).get("/api/progreso/").status_code == 403
+
+
+def test_el_superusuario_tampoco_hace_cursos(como, crear_usuario):
+    root = crear_usuario(None, "root", is_superuser=True, is_staff=True)
+    assert como(root).get("/api/progreso/").status_code == 403
+
+
 @pytest.mark.parametrize("metodo, ruta, cuerpo, duenno", [
-    ("get", "/api/progreso/", None, "Estudiante"),
     ("get", "/api/panel/resumen/", None, "Profesor"),
     ("patch", "/api/panel/cursos/{ajeno}/", {"titulo": "Admin"}, "Profesor dueño"),
     ("get", "/api/panel/estudiantes/estrellas/", None, "Profesor"),

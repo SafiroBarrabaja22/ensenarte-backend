@@ -587,7 +587,7 @@ Todos devuelven el archivo como adjunto. Se descargan con fetch y la cabecera
 
 ## GET `/reportes/historial/<slug>/?tipo=preguntas|camara`
 
-Autenticado (cualquier rol). PDF con las últimas 5 sesiones **del usuario
+Solo rol Estudiante. PDF con las últimas 5 sesiones **del usuario
 autenticado** en la evaluación del curso. `tipo` es `preguntas` (por defecto) o
 `camara`. Tiene el mismo título que la página ("Abecedario · Evaluación") y el
 mismo diseño que la tarjeta "Tu progreso":

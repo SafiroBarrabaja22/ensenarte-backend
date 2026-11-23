@@ -675,17 +675,13 @@ nc -zv -w 3 <ip-100.x-de-la-minipc> 3306
 
 ### 4. Código y configuración
 
-> **Mientras Docker no esté mezclado en `main`**, la configuración vive en la rama `docker`
-> de los dos repositorios: clona con `-b docker`. Cuando se mezcle, pasa a `main` con
-> `git -C <repo> switch main && git -C <repo> pull` (paso 8) y desde entonces clona sin `-b`.
-
 ```bash
 sudo mkdir -p /srv/ensenarte && sudo chown -R "$USER": /srv/ensenarte
 cd /srv/ensenarte
-git clone -b docker https://github.com/SafiroBarrabaja22/ensenarte-backend.git
-git clone -b docker https://github.com/SafiroBarrabaja22/ensenarte-frontend.git
-# Si ya estaban clonados: git -C <repo> fetch && git -C <repo> switch docker && git -C <repo> pull
-git -C ensenarte-backend branch --show-current && git -C ensenarte-frontend branch --show-current   # docker / docker
+git clone https://github.com/SafiroBarrabaja22/ensenarte-backend.git
+git clone https://github.com/SafiroBarrabaja22/ensenarte-frontend.git
+# Si ya estaban clonados: git -C <repo> switch main && git -C <repo> pull
+git -C ensenarte-backend branch --show-current && git -C ensenarte-frontend branch --show-current   # main / main
 cp ensenarte-backend/despliegue/docker-compose.yml .
 cp ensenarte-backend/despliegue/docker.env.example .env
 chmod 600 .env
@@ -751,10 +747,7 @@ Después abre `https://<maquina>.<tailnet>.ts.net/` en el navegador. El admin es
 
 ```bash
 cd /srv/ensenarte
-git -C ensenarte-backend pull && git -C ensenarte-frontend pull   # trae la rama en la que estás (docker, o main después)
-# El día que Docker se mezcle en main, una sola vez:
-#   git -C ensenarte-backend switch main && git -C ensenarte-frontend switch main
-#   git -C ensenarte-backend pull && git -C ensenarte-frontend pull
+git -C ensenarte-backend pull && git -C ensenarte-frontend pull
 cp ensenarte-backend/despliegue/docker-compose.yml .     # por si cambió
 docker compose up -d --build
 docker compose exec backend python manage.py migrate

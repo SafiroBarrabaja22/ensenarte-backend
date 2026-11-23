@@ -39,6 +39,7 @@ from apps.usuarios.roles import (
     ROL_CREADOR,
     ROL_INTERPRETE,
     ROL_PROFESOR,
+    ROL_VALIDADOR,
     ROLES_GESTION_GLOBAL,
     tiene_rol,
 )
@@ -47,7 +48,9 @@ from .permissions import (
     PUEDE_GESTIONAR_BIBLIOTECA,
     PUEDE_GESTIONAR_CONTENIDO,
     PUEDE_SUBIR_GIF,
+    PUEDE_VER_REVISIONES,
     EsDuenoDelCurso,
+    EsValidador,
     SoloLectura,
     exigir_curso_editable,
 )
@@ -59,7 +62,10 @@ from .serializers import (
     PalabraPanelSerializer,
     PreguntaPanelSerializer,
     RecursoVisualSerializer,
+    RevisionSenaSerializer,
 )
+from . import validacion
+from config.limites import MAX_COMENTARIO_VALIDACION
 
 
 
@@ -142,15 +148,25 @@ EJEMPLO_CURSO_PANEL = {
 EJEMPLO_OPCION = {"id": 28, "pregunta": 7, "texto": "A", "es_correcta": True}
 EJEMPLO_PREGUNTA_PANEL = {
     "id": 7, "curso": 1, "texto": "Cual es la sena para la letra A?", "video": "abecedario/a.gif",
-    "opciones": [EJEMPLO_OPCION],
+    "opciones": [EJEMPLO_OPCION], "estado_sena": "aprobada",
 }
 EJEMPLO_PALABRA = {
     "id": 1, "curso": 1, "titulo": "A", "imagen_frontal": "abecedario/a.png",
-    "video_gif": "abecedario/a.gif", "orden": 1,
+    "video_gif": "abecedario/a.gif", "orden": 1, "estado_sena": "aprobada",
 }
 EJEMPLO_RECURSO = {
     "id": 4, "nombre": "Insignia dorada", "archivo_url": "/media/biblioteca/3f2a9c.png",
     "extension": "png", "categoria": "curso_100", "fecha_creacion": "2026-11-16T10:00:00-05:00",
+    "es_sena": False, "estado_validacion": "aprobada", "comentario_validacion": "",
+    "subido_por": "interprete_demo",
+}
+EJEMPLO_RECURSO_SENA = {
+    **EJEMPLO_RECURSO, "id": 9, "nombre": "Seña letra A", "archivo_url": "/media/biblioteca/7b1e0d.gif",
+    "extension": "gif", "categoria": "recurso", "es_sena": True, "estado_validacion": "pendiente",
+}
+EJEMPLO_REVISION = {
+    "id": 3, "accion": "rechazada", "comentario": "La mano debe quedar a la altura del pecho.",
+    "usuario": "validador_demo", "archivo": "biblioteca/7b1e0d.gif", "fecha": "2026-11-23T09:30:00-05:00",
 }
 
 SubirGifSerializer = inline_serializer(
@@ -366,6 +382,8 @@ class PalabraViewSet(viewsets.ModelViewSet):
             filtro("q", "Busca en el nombre.", tipo=str),
             filtro("extension", "Extensión del archivo, p. ej. `gif`.", tipo=str),
             filtro("categoria", "`recurso`, `avatar`, `insignia` o `curso_100`.", tipo=str),
+            filtro("estado", "Estado de validación de las señas: `pendiente`, `aprobada` o `rechazada`. "
+                   "Las señas sin aprobar solo las ven el Interprete, el Validador y el Administrador.", tipo=str),
             filtro("page", "Página (50 por página). Sin `page` devuelve la lista completa sin paginar."),
         ],
     ),
@@ -377,6 +395,8 @@ class PalabraViewSet(viewsets.ModelViewSet):
             filtro("q", "Busca en el nombre.", tipo=str),
             filtro("extension", "Extensión del archivo, p. ej. `gif`.", tipo=str),
             filtro("categoria", "`recurso`, `avatar`, `insignia` o `curso_100`.", tipo=str),
+            filtro("estado", "Estado de validación de las señas: `pendiente`, `aprobada` o `rechazada`. "
+                   "Las señas sin aprobar solo las ven el Interprete, el Validador y el Administrador.", tipo=str),
             filtro("page", "Página (50 por página). Sin `page` devuelve la lista completa sin paginar."),
         ],
         responses=respuestas(
@@ -431,18 +451,28 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         return super().paginate_queryset(queryset)
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related("subido_por").prefetch_related("revisiones")
         busqueda = self.request.query_params.get("q", "").strip()
         extension = self.request.query_params.get("extension", "").lower()
         categoria = self.request.query_params.get("categoria", "").lower()
+        estado = self.request.query_params.get("estado", "").lower()
         usuario = self.request.user
         puede_ver_todo = tiene_rol(
-            usuario, ROL_ADMINISTRADOR, ROL_CREADOR, ROL_PROFESOR, ROL_INTERPRETE
+            usuario, ROL_ADMINISTRADOR, ROL_CREADOR, ROL_PROFESOR, ROL_INTERPRETE, ROL_VALIDADOR
         )
         if not puede_ver_todo:
             queryset = queryset.filter(categoria=RecursoVisual.Categoria.AVATAR)
+        # Las senas sin aprobar solo las ven quien las sube, quien las revisa y el
+        # Administrador: al Profesor y al CreadorDeCursos no les llegan.
+        if not tiene_rol(usuario, ROL_INTERPRETE, ROL_VALIDADOR, ROL_ADMINISTRADOR):
+            queryset = queryset.exclude(
+                Q(categoria=RecursoVisual.Categoria.RECURSO, archivo__iendswith=".gif")
+                & ~Q(estado_validacion=validacion.APROBADA)
+            )
         if categoria:
             queryset = queryset.filter(categoria=categoria)
+        if estado:
+            queryset = queryset.filter(estado_validacion=estado)
         if busqueda:
             queryset = queryset.filter(nombre__icontains=busqueda)
         if extension:
@@ -450,7 +480,90 @@ class RecursoVisualViewSet(viewsets.ModelViewSet):
         return queryset
 
     def perform_create(self, serializer):
-        serializer.save(subido_por=self.request.user)
+        datos = serializer.validated_data
+        serializer.save(
+            subido_por=self.request.user,
+            estado_validacion=validacion.estado_inicial(
+                datos.get("categoria", RecursoVisual.Categoria.RECURSO), datos["archivo"].name
+            ),
+        )
+
+    def perform_update(self, serializer):
+        """Si se reemplaza el archivo de una sena, vuelve a revision del Validador."""
+        recurso = serializer.save()
+        if "archivo" in serializer.validated_data and recurso.es_sena:
+            validacion.volver_a_revision(recurso, self.request.user)
+
+    @extend_schema(
+        tags=[ETIQUETA_PANEL],
+        summary="Aprobar o rechazar una seña",
+        description="El Validador revisa un gif de seña de la biblioteca. `decision` es `aprobar` o "
+        "`rechazar`; al rechazar, `comentario` es obligatorio (máximo "
+        f"{MAX_COMENTARIO_VALIDACION} caracteres). Queda en el historial de la seña. "
+        "Rol: **Validador** (solo él; ni el Administrador puede).",
+        parameters=[param_id("el recurso")],
+        request=inline_serializer("DecisionSena", {
+            "decision": serializers.ChoiceField(choices=["aprobar", "rechazar"]),
+            "comentario": serializers.CharField(required=False, allow_blank=True),
+        }),
+        responses=respuestas(
+            ok(RecursoVisualSerializer, {**EJEMPLO_RECURSO_SENA, "estado_validacion": "rechazada",
+                                          "comentario_validacion": "La mano debe quedar a la altura del pecho."}),
+            error_400({"detail": "Para rechazar una seña escribe un comentario."}, detalle=True,
+                      descripcion="Decisión inválida, falta el comentario al rechazar o el recurso no es una seña."),
+            error_401(),
+            error_403(descripcion="Solo el Validador puede aprobar o rechazar señas."),
+            error_404(),
+        ),
+    )
+    @action(detail=True, methods=["post"], permission_classes=[EsValidador])
+    def validar(self, request, pk=None):
+        """POST /api/panel/recursos/<pk>/validar/ {"decision": "aprobar"|"rechazar", "comentario"}"""
+        recurso = self.get_object()
+        if not recurso.es_sena:
+            return Response(
+                {"detail": "Solo los gifs de señas de la biblioteca pasan por validación."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        decision = str(request.data.get("decision", "")).strip().lower()
+        comentario = str(request.data.get("comentario", "") or "").strip()
+        if decision not in ("aprobar", "rechazar"):
+            return Response(
+                {"detail": "La decisión debe ser 'aprobar' o 'rechazar'."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if decision == "rechazar" and not comentario:
+            return Response(
+                {"detail": "Para rechazar una seña escribe un comentario."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(comentario) > MAX_COMENTARIO_VALIDACION:
+            return Response(
+                {"detail": f"El comentario admite como máximo {MAX_COMENTARIO_VALIDACION} caracteres."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        validacion.decidir(recurso, decision == "aprobar", comentario, request.user)
+        recurso = self.get_queryset().get(pk=recurso.pk)
+        return Response(RecursoVisualSerializer(recurso).data)
+
+    @extend_schema(
+        tags=[ETIQUETA_PANEL],
+        summary="Historial de una seña",
+        description="Decisiones del Validador (con su comentario) y reemplazos del archivo, del más "
+        "reciente al más antiguo. Roles: **Validador**, **Interprete** o **Administrador**.",
+        parameters=[param_id("el recurso")],
+        responses=respuestas(
+            ok(RevisionSenaSerializer(many=True), [EJEMPLO_REVISION]),
+            error_401(),
+            error_403(descripcion="El rol no revisa ni sube señas."),
+            error_404(),
+        ),
+    )
+    @action(detail=True, methods=["get"], permission_classes=[PUEDE_VER_REVISIONES])
+    def revisiones(self, request, pk=None):
+        """GET /api/panel/recursos/<pk>/revisiones/"""
+        recurso = self.get_object()
+        return Response(RevisionSenaSerializer(recurso.revisiones.select_related("usuario"), many=True).data)
 
     def destroy(self, request, *args, **kwargs):
         recurso = self.get_object()
@@ -544,15 +657,45 @@ def estrellas_estudiantes(request):
     return Response(data)
 
 
+def _subir_sena(request, objeto, campo, titulo):
+    """
+    Guarda el gif adjunto (campo 'gif') en la biblioteca como sena pendiente del
+    Validador y lo asigna a `objeto.campo`. Devuelve un Response de error, o None.
+    """
+    archivo = request.FILES.get("gif")
+    if not archivo:
+        return Response(
+            {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        extension = validar_imagen(archivo, FORMATOS_GIF)
+    except serializers.ValidationError as error:
+        return Response({"detail": error.detail[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+    # El nombre del archivo lo pone ruta_recurso_visual (UUID); aqui solo se fija la extension.
+    archivo.name = f"sena.{extension}"
+    recurso = RecursoVisual.objects.create(
+        nombre=f"Seña: {titulo}"[:120],
+        archivo=archivo,
+        categoria=RecursoVisual.Categoria.RECURSO,
+        subido_por=request.user,
+        estado_validacion=validacion.PENDIENTE,
+    )
+    setattr(objeto, campo, f"/{recurso.archivo.url.lstrip('/')}")
+    objeto.save(update_fields=[campo])
+    return None
+
 @extend_schema(
     tags=[ETIQUETA_PANEL],
     summary="Subir el gif de una palabra",
-    description="Guarda el gif en `media/diccionario_gifs/` y lo asigna a la palabra. "
+    description="Guarda el gif en la biblioteca visual como seña **pendiente** del Validador y lo asigna "
+    "a la palabra: los estudiantes no la ven en el diccionario hasta que se apruebe. "
     "Roles: **Interprete** (cualquier curso), **Profesor** (solo sus cursos), CreadorDeCursos o Administrador.",
     parameters=[param_id("la palabra")],
     request={"multipart/form-data": SubirGifSerializer},
     responses=respuestas(
-        ok(PalabraPanelSerializer, {**EJEMPLO_PALABRA, "video_gif": "/media/diccionario_gifs/sena_a.gif"}),
+        ok(PalabraPanelSerializer, {**EJEMPLO_PALABRA, "video_gif": "/media/biblioteca/7b1e0d.gif", "estado_sena": "pendiente"}),
         error_400({"detail": "Debes adjuntar el archivo en el campo 'gif'."}, detalle=True, descripcion="Falta el archivo."),
         error_401(),
         error_403(descripcion="El rol no sube gifs, o el curso es de otro profesor.", extra=MENSAJE_403_CURSO_AJENO),
@@ -567,32 +710,22 @@ def subir_gif_palabra(request, pk):
     # El Interprete sube gifs a cualquier curso; un Profesor solo a los suyos.
     if not tiene_rol(request.user, ROL_INTERPRETE):
         exigir_curso_editable(request.user, palabra.curso)
-    archivo = request.FILES.get("gif")
-    if not archivo:
-        return Response(
-            {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    try:
-        extension = validar_imagen(archivo, FORMATOS_GIF)
-    except serializers.ValidationError as error:
-        return Response({"detail": error.detail[0]}, status=status.HTTP_400_BAD_REQUEST)
-
-    ruta = default_storage.save(f"diccionario_gifs/{nombre_seguro(extension)}", archivo)
-    palabra.video_gif = default_storage.url(ruta)
-    palabra.save(update_fields=["video_gif"])
+    error = _subir_sena(request, palabra, "video_gif", palabra.titulo)
+    if error:
+        return error
     return Response(PalabraPanelSerializer(palabra).data)
 
 
 @extend_schema(
     tags=[ETIQUETA_PANEL],
     summary="Subir el gif de una pregunta",
-    description="Guarda el gif en `media/evaluacion_gifs/` y lo asigna a la pregunta. "
+    description="Guarda el gif en la biblioteca visual como seña **pendiente** del Validador y lo asigna "
+    "a la pregunta. "
     "Roles: **Interprete** (cualquier curso), **Profesor** (solo sus cursos), CreadorDeCursos o Administrador.",
     parameters=[param_id("la pregunta")],
     request={"multipart/form-data": SubirGifSerializer},
     responses=respuestas(
-        ok(PreguntaPanelSerializer, {**EJEMPLO_PREGUNTA_PANEL, "video": "/media/evaluacion_gifs/sena_a.gif"}),
+        ok(PreguntaPanelSerializer, {**EJEMPLO_PREGUNTA_PANEL, "video": "/media/biblioteca/7b1e0d.gif", "estado_sena": "pendiente"}),
         error_400({"detail": "Debes adjuntar el archivo en el campo 'gif'."}, detalle=True, descripcion="Falta el archivo."),
         error_401(),
         error_403(descripcion="El rol no sube gifs, o el curso es de otro profesor.", extra=MENSAJE_403_CURSO_AJENO),
@@ -607,20 +740,9 @@ def subir_gif_pregunta(request, pk):
     # El Interprete sube gifs a cualquier curso; un Profesor solo a los suyos.
     if not tiene_rol(request.user, ROL_INTERPRETE):
         exigir_curso_editable(request.user, pregunta.curso)
-    archivo = request.FILES.get("gif")
-    if not archivo:
-        return Response(
-            {"detail": "Debes adjuntar el archivo en el campo 'gif'."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-    try:
-        extension = validar_imagen(archivo, FORMATOS_GIF)
-    except serializers.ValidationError as error:
-        return Response({"detail": error.detail[0]}, status=status.HTTP_400_BAD_REQUEST)
-
-    ruta = default_storage.save(f"evaluacion_gifs/{nombre_seguro(extension)}", archivo)
-    pregunta.video = default_storage.url(ruta)
-    pregunta.save(update_fields=["video"])
+    error = _subir_sena(request, pregunta, "video", pregunta.texto)
+    if error:
+        return error
     return Response(PreguntaPanelSerializer(pregunta).data)
 
 

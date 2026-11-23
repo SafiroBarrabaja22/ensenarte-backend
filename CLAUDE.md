@@ -101,7 +101,10 @@ Todos usan `django.contrib.auth.models.User` (no hay User personalizado).
 **cursos**
 - `RecursoVisual` — imagen subida a `media/biblioteca/<uuid>.<ext>`;
   `categoria` ∈ {`recurso`, `avatar`, `insignia`, `curso_100`};
-  `subido_por` FK→User (SET_NULL).
+  `subido_por` FK→User (SET_NULL); `estado_validacion` ∈ {`pendiente`, `aprobada`,
+  `rechazada`} (solo cuenta en las señas, `es_sena`).
+- `RevisionSena` — FK→RecursoVisual (`revisiones`, CASCADE); `accion` ∈ {`aprobada`,
+  `rechazada`, `reenviada`}, `comentario`, `usuario` FK→User (SET_NULL), `archivo`, `fecha`.
 - `Curso` — `nombre` es **SlugField único y es el slug que usa el frontend en
   las URLs**; `titulo`, `portada_curso`, `icono_curso`, `insignia` (CharField con
   ruta/nombre de archivo), `insignia_100` FK→RecursoVisual (SET_NULL, limitado a
@@ -180,8 +183,10 @@ Rutas raíz en [config/urls.py](config/urls.py). Permiso por defecto de DRF:
 | CRUD | `opciones/` (`?pregunta=<id>`) | Admin, Creador, Profesor 🔸 |
 | CRUD | `diccionario/` (`?curso=<id>`, sin paginar) | Admin, Creador, Profesor 🔸 |
 | POST | `diccionario/reordenar/` (`curso`, `ids`) | Admin, Creador, Profesor 🔸 |
-| GET | `recursos/` (`?q=`, `?extension=`, `?categoria=`, pagina solo con `?page=`) | IsAuthenticated (sin rol de contenido: solo ve `avatar`) |
+| GET | `recursos/` (`?q=`, `?extension=`, `?categoria=`, `?estado=`, pagina solo con `?page=`) | IsAuthenticated (sin rol de contenido: solo ve `avatar`; Profesor y Creador: solo señas aprobadas) |
 | POST/PUT/PATCH/DELETE | `recursos/` | Interprete o Admin (DELETE → 409 si el recurso está en uso) |
+| POST | `recursos/<id>/validar/` (`decision`: `aprobar`/`rechazar`, `comentario`) | **Solo Validador** |
+| GET | `recursos/<id>/revisiones/` | Validador, Interprete o Admin |
 | GET | `resumen/` | Admin, Creador, Profesor |
 | GET | `estudiantes/estrellas/` | Admin, Creador, Profesor |
 | POST | `diccionario/<id>/gif/` (campo `gif`) | Admin, Creador, Interprete, Profesor 🔸 |
@@ -220,7 +225,7 @@ ejecute código en el dominio del admin).
 ## Roles y cómo se verifican
 
 Los roles son **grupos de Django**: `Estudiante`, `Profesor`, `Interprete`,
-`CreadorDeCursos`, `Administrador`. La tabla completa de rol contra endpoint
+`Validador`, `CreadorDeCursos`, `Administrador`. La tabla completa de rol contra endpoint
 está en [README.md](README.md) ("Roles y permisos").
 
 - **Nombres:** solo en [apps/usuarios/roles.py](apps/usuarios/roles.py)
@@ -229,15 +234,28 @@ está en [README.md](README.md) ("Roles y permisos").
 - **Creación de grupos:** migración de datos
   [usuarios/0003_grupos_de_roles.py](apps/usuarios/migrations/0003_grupos_de_roles.py).
   También pasó los `is_staff` existentes a Administrador y las cuentas sin rol
-  a Estudiante.
+  a Estudiante. `usuarios/0005_grupo_validador` agrega el grupo Validador a las bases
+  existentes; **un rol nuevo necesita su propia migración igual**.
 - **Helpers:** `roles_de(usuario)` (superusuario ⇒ incluye Administrador;
   `is_staff` solo NO da rol), `tiene_rol(usuario, *roles)`, `asignar_rol`.
 - **Registro:** `RegistroSerializer.create` asigna `Estudiante`. Los demás
   roles se asignan desde `/admin/`.
 - **Permisos DRF** en [apps/cursos/permissions.py](apps/cursos/permissions.py):
-  una clase por rol (`EsEstudiante`, `EsProfesor`, `EsInterprete`,
+  una clase por rol (`EsEstudiante`, `EsProfesor`, `EsInterprete`, `EsValidador`,
   `EsCreadorDeCursos`, `EsAdministrador`) y combinaciones `PUEDE_APRENDER`,
-  `PUEDE_GESTIONAR_CONTENIDO`, `PUEDE_GESTIONAR_BIBLIOTECA`, `PUEDE_SUBIR_GIF`.
+  `PUEDE_GESTIONAR_CONTENIDO`, `PUEDE_GESTIONAR_BIBLIOTECA`, `PUEDE_SUBIR_GIF`,
+  `PUEDE_VER_REVISIONES`.
+- **Validación de señas** ([apps/cursos/validacion.py](apps/cursos/validacion.py), README
+  "Validación de señas"):
+  - Una seña es un gif de categoría `recurso` (`RecursoVisual.es_sena`). Su
+    `estado_validacion` lo cambia **solo** `POST panel/recursos/<id>/validar/` (`EsValidador`;
+    ni el Administrador ni un superusuario).
+  - Al subirla o reemplazar su archivo queda `pendiente`; el historial va en `RevisionSena`.
+  - Profesor y Creador no ven señas sin aprobar.
+  - `PalabraPanelSerializer` y `PreguntaPanelSerializer` rechazan un gif nuevo que no sea una
+    seña aprobada de la biblioteca.
+  - `palabras_visibles()` oculta del diccionario del estudiante las palabras con seña sin aprobar.
+  - Pruebas: [tests/test_validacion.py](tests/test_validacion.py).
 - **Nivel de objeto:** `EsDuenoDelCurso` + `puede_editar_curso` /
   `exigir_curso_editable`. Administrador y CreadorDeCursos editan cualquier
   curso; Profesor solo los que tienen `creado_por = él`. En `list` el Profesor
@@ -251,7 +269,7 @@ está en [README.md](README.md) ("Roles y permisos").
 - **Al cliente:** `PerfilSerializer` devuelve `"roles": [...]` (ya no existen
   `es_creador`/`es_profesor`/`es_interprete`).
 - **Cuentas demo:** `poblar_datos` crea `admin_demo`, `creador_demo`,
-  `profesor_demo`, `profesor2_demo`, `interprete_demo` y `estudiante_demo` con la
+  `profesor_demo`, `profesor2_demo`, `interprete_demo`, `validador_demo` y `estudiante_demo` con la
   contraseña `Ensenarte2026!`. Solo lo hace con `DEBUG=True` o con `--usuarios-demo`.
 
 ## Autenticación del frontend contra esta API
@@ -380,7 +398,8 @@ la migración o la CI falla.
 ## Reglas en la base de datos (MySQL)
 
 Migraciones de `cursos`: `0010_auditoria_curso` (modelo `AuditoriaCurso`, normal),
-`0011_procedimientos_mysql` (solo procedimientos) y `0012_triggers_mysql` (solo triggers).
+`0011_procedimientos_mysql` (solo procedimientos), `0012_triggers_mysql` (solo triggers) y
+`0014_triggers_validacion` (triggers de la validación de señas).
 Usan `RunSQLSoloMySQL` ([apps/cursos/operaciones_mysql.py](apps/cursos/operaciones_mysql.py)):
 en SQLite (pruebas en local y en la CI) y PostgreSQL no ejecutan nada.
 
@@ -395,6 +414,14 @@ en SQLite (pruebas en local y en la CI) y PostgreSQL no ejecutan nada.
 - **Triggers:** una sola opción correcta, máximo `MAXIMO_OPCIONES_POR_PREGUNTA` opciones,
   auditoría de cursos (alta, cambio y baja en JSON), estrellas al completar un progreso
   e intento finalizado inmutable.
+- **Triggers de la validación de señas** (`0014_triggers_validacion`):
+  - `recurso_estado_con_historial`: el estado cambia solo si coincide con la última
+    `RevisionSena`. Por eso `validacion.decidir()` y `volver_a_revision()` crean **primero**
+    la revisión y después guardan el estado: no inviertas ese orden.
+  - `revision_sena_reglas`: solo un usuario del grupo Validador aprueba o rechaza, y rechazar
+    exige comentario.
+  - `revision_sena_inmutable`: el historial no se edita. Se permite borrarlo y poner el
+    usuario en NULL.
 - **Opción correcta:** MySQL no deja que un trigger modifique su propia tabla (error 1442).
   El trigger RECHAZA la segunda correcta y, para cambiar la correcta, se usa siempre
   `marcar_opcion_correcta()`, como hace el panel. No marques una opción con `save()`.

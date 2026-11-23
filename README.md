@@ -185,8 +185,9 @@ ni correr ningún comando. Un usuario puede tener varios roles.
 | `Estudiante` | Automático al registrarse en `/api/auth/registro/` | Diccionario, evaluaciones (preguntas y cámara), progreso, perfil |
 | `Profesor` | Admin de Django → Usuarios → Grupos | Lo de Estudiante + crear cursos y administrar **solo los suyos** (preguntas, opciones, diccionario, gifs), resumen y estrellas |
 | `Interprete` | Admin de Django | Lo de Estudiante + biblioteca visual (recursos, avatares, insignias) y gifs de cualquier curso |
+| `Validador` | Admin de Django | Lo de Estudiante + **aprobar o rechazar** (con comentario) las señas que sube el Intérprete. Es el **único** que puede hacerlo ([Validación de señas](#validación-de-señas)) |
 | `CreadorDeCursos` | Admin de Django | Lo de Estudiante + administrar el contenido de **todos** los cursos |
-| `Administrador` | Admin de Django, o ser superusuario | Todo |
+| `Administrador` | Admin de Django, o ser superusuario | Todo, menos validar señas |
 
 `is_staff` por sí solo ya no da ningún rol: solo permite entrar al admin de
 Django. La migración pasó a `Administrador` a los usuarios staff que ya
@@ -200,23 +201,57 @@ recibe **403** en todo, salvo su perfil y el cambio de contraseña.
 
 ✅ permitido · ❌ denegado (403, o 401 sin sesión) · 🔸 solo en los cursos que él creó
 
-| Endpoint | Visitante | Estudiante | Profesor | Intérprete | Creador | Admin |
-|---|---|---|---|---|---|---|
-| `POST auth/registro/`, `auth/login/`, `auth/refresh/`, `auth/verify/`, `auth/recuperar/*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET/PATCH auth/perfil/`, `POST auth/cambiar-password/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET cursos/`, `GET cursos/<slug>/` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET cursos/<slug>/diccionario/`, `GET progreso/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `cursos/<slug>/evaluacion/*` (iniciar, actual, responder, resultado, historial) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET/POST evaluacion-camara/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| `GET panel/resumen/`, `GET panel/estudiantes/estrellas/` | ❌ | ❌ | ✅ | ❌ | ✅ | ✅ |
-| `GET panel/cursos/` (listado) | ❌ | ❌ | 🔸 | ❌ | ✅ | ✅ |
-| `POST panel/cursos/` | ❌ | ❌ | ✅ (queda como dueño) | ❌ | ✅ | ✅ |
-| `GET/PATCH/DELETE panel/cursos/<id>/` | ❌ | ❌ | 🔸 | ❌ | ✅ | ✅ |
-| CRUD `panel/preguntas/`, `panel/opciones/`, `panel/diccionario/` y `POST panel/diccionario/reordenar/` | ❌ | ❌ | 🔸 | ❌ | ✅ | ✅ |
-| `POST panel/diccionario/<id>/gif/`, `POST panel/preguntas/<id>/gif/` | ❌ | ❌ | 🔸 | ✅ | ✅ | ✅ |
-| `POST panel/archivos/` | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
-| `GET panel/recursos/` (biblioteca) | ❌ | Solo avatares | ✅ | ✅ | ✅ | ✅ |
-| `POST/PATCH/DELETE panel/recursos/` (recursos, avatares, insignias) | ❌ | ❌ | ❌ | ✅ | ❌ | ✅ |
+| Endpoint | Visitante | Estudiante | Profesor | Intérprete | Validador | Creador | Admin |
+|---|---|---|---|---|---|---|---|
+| `POST auth/registro/`, `auth/login/`, `auth/refresh/`, `auth/verify/`, `auth/recuperar/*` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET/PATCH auth/perfil/`, `POST auth/cambiar-password/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET cursos/`, `GET cursos/<slug>/` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET cursos/<slug>/diccionario/`, `GET progreso/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `cursos/<slug>/evaluacion/*` (iniciar, actual, responder, resultado, historial) | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET/POST evaluacion-camara/` | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `GET panel/resumen/`, `GET panel/estudiantes/estrellas/` | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| `GET panel/cursos/` (listado) | ❌ | ❌ | 🔸 | ❌ | ❌ | ✅ | ✅ |
+| `POST panel/cursos/` | ❌ | ❌ | ✅ (queda como dueño) | ❌ | ❌ | ✅ | ✅ |
+| `GET/PATCH/DELETE panel/cursos/<id>/` | ❌ | ❌ | 🔸 | ❌ | ❌ | ✅ | ✅ |
+| CRUD `panel/preguntas/`, `panel/opciones/`, `panel/diccionario/` y `POST panel/diccionario/reordenar/` | ❌ | ❌ | 🔸 | ❌ | ❌ | ✅ | ✅ |
+| `POST panel/diccionario/<id>/gif/`, `POST panel/preguntas/<id>/gif/` | ❌ | ❌ | 🔸 | ✅ | ❌ | ✅ | ✅ |
+| `POST panel/archivos/` | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ✅ |
+| `GET panel/recursos/` (biblioteca) | ❌ | Solo avatares | ✅ (solo señas aprobadas) | ✅ | ✅ | ✅ (solo señas aprobadas) | ✅ |
+| `POST/PATCH/DELETE panel/recursos/` (recursos, avatares, insignias) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ |
+| `POST panel/recursos/<id>/validar/` (aprobar o rechazar una seña) | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| `GET panel/recursos/<id>/revisiones/` (historial de una seña) | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
+
+### Validación de señas
+
+Las señas son los **GIF de la categoría "Recurso de curso"** de la biblioteca visual
+([apps/cursos/validacion.py](apps/cursos/validacion.py)):
+
+1. **El Intérprete** sube la seña y esta queda **en revisión** (`pendiente`).
+2. **El Validador** la revisa en `pages/panel/validacion.html`:
+   - si la aprueba, queda `aprobada`;
+   - si la rechaza, debe escribir un comentario explicando qué hay que corregir, y queda `rechazada`.
+
+   Solo él decide: ni el Administrador ni un superusuario pueden hacerlo, y el estado no se
+   cambia editando el recurso ni desde el admin de Django.
+3. **Si el Intérprete corrige la seña**, sube el archivo nuevo con el botón ↻ de la biblioteca
+   y la seña vuelve a **en revisión**. El comentario anterior queda en el historial
+   (`RevisionSena`, también visible en el admin de Django, de solo lectura).
+
+**Al Profesor y al CreadorDeCursos no les llegan señas sin aprobar:**
+- no las ven en la biblioteca ni en el buscador del diccionario y de las preguntas;
+- la API rechaza (400) asignar a una palabra o pregunta una seña sin aprobar, o un gif subido
+  fuera de la biblioteca;
+- los gifs de `assets/` del frontend siguen permitidos, porque están versionados en git.
+
+**En el diccionario de los estudiantes** (`GET cursos/<slug>/diccionario/`) no aparecen las
+palabras cuya seña no está aprobada. Las preguntas de evaluación no se ocultan; solo se exige
+seña aprobada al asignarlas.
+
+**Señas que ya existían:** todo lo que ya estaba en la biblioteca al crear este rol quedó
+`aprobada` (migración `cursos/0013`).
+
+**Si reemplazas una seña ya asignada:** la palabra conserva el gif aprobado anterior hasta que
+se le asigne el nuevo, una vez aprobado.
 
 ### Cuentas de demostración
 
@@ -230,6 +265,7 @@ usan la misma contraseña: **`Ensenarte2026!`**
 | `profesor_demo` | Profesor | Crea un curso y lo administra |
 | `profesor2_demo` | Profesor | Intenta editar el curso de `profesor_demo` y recibe 403 |
 | `interprete_demo` | Interprete | Biblioteca visual y gifs |
+| `validador_demo` | Validador | Aprueba o rechaza las señas |
 | `estudiante_demo` | Estudiante | Cursos y evaluaciones; si abre el panel, lo redirige |
 
 Los profesores demo no son dueños de los cursos que ya existen. Para mostrar
@@ -455,6 +491,9 @@ venga del admin de Django, de un script o de una consulta SQL directa:
 | `curso_auditoria_*` | Toda alta, cambio y baja de cursos queda en `cursos_auditoriacurso` (visible en el admin, solo lectura) |
 | `progreso_estrellas_*` | Las estrellas del perfil son la cantidad de cursos completados |
 | `intento_finalizado_inmutable` | Un intento terminado no admite más respuestas |
+| `recurso_estado_con_historial` | El estado de una seña solo cambia si coincide con su última revisión en `cursos_revisionsena`: nadie la aprueba con un `UPDATE` a mano |
+| `revision_sena_reglas` | Solo un usuario del grupo Validador aprueba o rechaza (ni el superusuario), y rechazar exige comentario |
+| `revision_sena_inmutable` | El historial de una seña no se reescribe (sí se puede borrar junto con la seña) |
 
 | Procedimiento | Qué hace |
 |---|---|

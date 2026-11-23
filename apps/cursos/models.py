@@ -22,6 +22,13 @@ class RecursoVisual(models.Model):
         INSIGNIA = "insignia", "Insignia de curso"
         CURSO_100 = "curso_100", "Curso 100%"
 
+    class EstadoValidacion(models.TextChoices):
+        """Revision del Validador. Solo aplica a las senas (ver `es_sena`)."""
+
+        PENDIENTE = "pendiente", "Pendiente de validacion"
+        APROBADA = "aprobada", "Aprobada"
+        RECHAZADA = "rechazada", "Rechazada"
+
     nombre = models.CharField(max_length=120)
     archivo = models.ImageField(upload_to=ruta_recurso_visual)
     categoria = models.CharField(
@@ -38,6 +45,15 @@ class RecursoVisual(models.Model):
         related_name="recursos_visuales",
     )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    # Las senas nuevas o reemplazadas quedan "pendiente" (apps/cursos/validacion.py);
+    # el resto de recursos no pasa por el Validador y queda "aprobada". El valor por
+    # defecto aprueba lo que ya existia al crear la columna.
+    estado_validacion = models.CharField(
+        max_length=10,
+        choices=EstadoValidacion.choices,
+        default=EstadoValidacion.APROBADA,
+        db_index=True,
+    )
 
     class Meta:
         ordering = ("nombre", "id")
@@ -46,6 +62,46 @@ class RecursoVisual(models.Model):
 
     def __str__(self):
         return self.nombre
+
+    @property
+    def es_sena(self):
+        """Un gif de la categoria "recurso": la sena que revisa el Validador."""
+        return (
+            self.categoria == self.Categoria.RECURSO
+            and Path(self.archivo.name or "").suffix.lower() == ".gif"
+        )
+
+
+class RevisionSena(models.Model):
+    """Historial de una sena: cada decision del Validador y cada reenvio."""
+
+    class Accion(models.TextChoices):
+        APROBADA = "aprobada", "Aprobada"
+        RECHAZADA = "rechazada", "Rechazada"
+        REENVIADA = "reenviada", "Archivo reemplazado (vuelve a revision)"
+
+    recurso = models.ForeignKey(
+        RecursoVisual, on_delete=models.CASCADE, related_name="revisiones"
+    )
+    accion = models.CharField(max_length=10, choices=Accion.choices)
+    comentario = models.TextField(blank=True, default="")
+    usuario = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="revisiones_sena",
+        help_text="El Validador que decidio, o quien reemplazo el archivo.",
+    )
+    archivo = models.CharField(
+        max_length=255, help_text="Archivo revisado (la sena puede reemplazarse despues)."
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-fecha", "-id")
+        verbose_name = "Revision de sena"
+        verbose_name_plural = "Revisiones de senas"
+
+    def __str__(self):
+        return f"{self.recurso} -> {self.get_accion_display()}"
 
 
 class Curso(models.Model):

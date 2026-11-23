@@ -11,7 +11,9 @@ Alcance de cada rol:
   cursos que el creo (permiso a nivel de objeto).
 - Interprete: lo de Estudiante + biblioteca visual y gifs de cualquier curso.
 - CreadorDeCursos: lo de Estudiante + contenido de TODOS los cursos.
-- Administrador (grupo o superusuario): todo.
+- Validador: lo de Estudiante + aprueba o rechaza las senas (gifs de la
+  biblioteca). Es el UNICO que puede hacerlo.
+- Administrador (grupo o superusuario): todo, menos validar senas.
 """
 
 from rest_framework.exceptions import PermissionDenied
@@ -23,6 +25,7 @@ from apps.usuarios.roles import (
     ROL_ESTUDIANTE,
     ROL_INTERPRETE,
     ROL_PROFESOR,
+    ROL_VALIDADOR,
     ROLES_GESTION_GLOBAL,
     tiene_rol,
 )
@@ -64,6 +67,11 @@ class EsCreadorDeCursos(PermisoPorRol):
 class EsAdministrador(PermisoPorRol):
     rol = ROL_ADMINISTRADOR
     message = "Esta accion requiere el rol Administrador."
+
+
+class EsValidador(PermisoPorRol):
+    rol = ROL_VALIDADOR
+    message = "Solo el Validador puede aprobar o rechazar senas."
 
 
 class SoloLectura(BasePermission):
@@ -127,7 +135,12 @@ class EsDuenoDelCurso(BasePermission):
 # Cualquier rol puede estudiar (los profesores revisan sus cursos como alumnos).
 PUEDE_APRENDER = (
     EsEstudiante | EsProfesor | EsInterprete | EsCreadorDeCursos | EsAdministrador
+    | EsValidador
 )
+
+# Ver el estado de las senas y su historial de revisiones: quien las sube,
+# quien las revisa y el Administrador.
+PUEDE_VER_REVISIONES = EsValidador | EsInterprete | EsAdministrador
 
 # Panel de cursos, preguntas, opciones y diccionario.
 PUEDE_GESTIONAR_CONTENIDO = EsProfesor | EsCreadorDeCursos | EsAdministrador

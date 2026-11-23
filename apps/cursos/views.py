@@ -34,6 +34,7 @@ from .models import (
     ProgresoUsuario,
 )
 from .permissions import PUEDE_APRENDER
+from .validacion import palabras_visibles
 from .serializers import (
     CursoSerializer,
     InsigniaSerializer,
@@ -109,7 +110,7 @@ HistorialItemSerializer = inline_serializer(
     many=True,
 )
 
-ROLES_APRENDIZAJE = "Cualquier rol (Estudiante, Profesor, Interprete, CreadorDeCursos, Administrador)."
+ROLES_APRENDIZAJE = "Cualquier rol (Estudiante, Profesor, Interprete, Validador, CreadorDeCursos, Administrador)."
 
 
 # ==========================================================
@@ -153,6 +154,7 @@ def detalle_curso(request, slug):
     tags=[ETIQUETA_CURSOS],
     summary="Diccionario visual de un curso",
     description="Palabras del curso en el orden definido por el profesor, con imagen y gif. "
+    "No incluye las palabras cuya seña todavía no aprueba el Validador. "
     + ROLES_APRENDIZAJE,
     parameters=[PARAM_SLUG],
     responses=respuestas(
@@ -170,7 +172,8 @@ def detalle_curso(request, slug):
 def diccionario_curso(request, slug):
     """GET /api/cursos/<slug>/diccionario/"""
     curso = get_object_or_404(Curso, nombre=slug, activo=True)
-    palabras = curso.diccionario.all()
+    # Sin las palabras cuya seña aún no aprueba el Validador (apps/cursos/validacion.py).
+    palabras = palabras_visibles(curso.diccionario.all())
     return Response(
         {
             "curso": CursoSerializer(curso).data,

@@ -1,5 +1,5 @@
 """
-Reglas que protege la base de datos MySQL (migraciones 0011 y 0012).
+Reglas que protege la base de datos MySQL (migraciones 0011, 0012 y 0014).
 
 Cada prueba intenta violar una regla DESDE EL ORM (create, save, update,
 bulk_create) y comprueba que el rechazo viene de la base: un SIGNAL
@@ -30,7 +30,9 @@ from apps.cursos.models import (
     Pregunta,
     ProgresoUsuario,
     RecursoVisual,
+    RevisionSena,
 )
+from apps.cursos import validacion
 from apps.evaluacion_camara.models import EvaluacionCamara, IntentoCamara
 from apps.usuarios.roles import ROL_ESTUDIANTE
 
@@ -259,6 +261,73 @@ def test_un_intento_abierto_si_acepta_respuestas(estudiante, crear_curso):
     intento.save()
     intento.finalizado = True
     intento.save()
+
+
+# ----------------------------------------- Reglas 6 a 8: validacion de senas (migracion 0014)
+
+
+@pytest.fixture
+def sena(interprete):
+    return RecursoVisual.objects.create(
+        nombre="Seña A", archivo="biblioteca/sena-prueba.gif", categoria=RecursoVisual.Categoria.RECURSO,
+        subido_por=interprete, estado_validacion=RecursoVisual.EstadoValidacion.PENDIENTE,
+    )
+
+
+def test_trigger_rechaza_aprobar_una_sena_sin_revision(sena):
+    with la_base_rechaza("solo cambia con su revision"):
+        RecursoVisual.objects.filter(pk=sena.pk).update(estado_validacion="aprobada")
+
+
+def test_trigger_rechaza_un_estado_distinto_a_la_ultima_revision(sena, validador):
+    validacion.decidir(sena, False, "Corregir la mano.", validador)
+    with la_base_rechaza("solo cambia con su revision"):
+        RecursoVisual.objects.filter(pk=sena.pk).update(estado_validacion="aprobada")
+
+
+def test_la_aplicacion_cambia_el_estado_con_su_revision(sena, validador, interprete):
+    validacion.decidir(sena, False, "Corregir la mano.", validador)
+    validacion.volver_a_revision(sena, interprete)
+    validacion.decidir(sena, True, "", validador)
+    sena.refresh_from_db()
+    assert sena.estado_validacion == "aprobada"
+    assert list(sena.revisiones.values_list("accion", flat=True)) == ["aprobada", "reenviada", "rechazada"]
+
+
+@pytest.mark.parametrize("quien", ["interprete", "administrador", "superusuario"])
+def test_trigger_solo_un_validador_aprueba(request, sena, crear_usuario, quien):
+    usuario = (crear_usuario(None, "root", is_superuser=True, is_staff=True)
+               if quien == "superusuario" else request.getfixturevalue(quien))
+    with la_base_rechaza("Solo un usuario del grupo"):
+        RevisionSena.objects.create(recurso=sena, accion="aprobada", usuario=usuario, archivo=sena.archivo.name)
+
+
+def test_trigger_rechazar_exige_comentario(sena, validador):
+    with la_base_rechaza("exige un comentario"):
+        RevisionSena.objects.create(
+            recurso=sena, accion="rechazada", comentario="   ", usuario=validador, archivo=sena.archivo.name
+        )
+
+
+def test_trigger_rechaza_una_accion_desconocida(sena, validador):
+    with la_base_rechaza("Accion de revision no valida"):
+        RevisionSena.objects.create(recurso=sena, accion="borrada", usuario=validador, archivo=sena.archivo.name)
+
+
+def test_trigger_el_historial_no_se_modifica(sena, validador):
+    validacion.decidir(sena, False, "Corregir la mano.", validador)
+    revision = sena.revisiones.get()
+    for cambio in ({"accion": "aprobada"}, {"comentario": "Otro comentario"}):
+        with la_base_rechaza("no se modifica"):
+            RevisionSena.objects.filter(pk=revision.pk).update(**cambio)
+
+
+def test_borrar_la_cuenta_del_validador_o_la_sena_se_permite(sena, validador):
+    validacion.decidir(sena, True, "", validador)
+    validador.delete()   # SET_NULL en el historial
+    assert sena.revisiones.get().usuario_id is None
+    sena.delete()        # CASCADE del historial
+    assert not RevisionSena.objects.exists()
 
 
 # =================================================================== PROCEDIMIENTOS

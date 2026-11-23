@@ -173,10 +173,13 @@ def test_subir_gif_de_palabra_y_de_pregunta(como, profesor, curso, gif):
     pregunta = curso.preguntas.first()
     respuesta = cliente.post(f"/api/panel/diccionario/{palabra.id}/gif/", {"gif": gif()}, format="multipart")
     assert respuesta.status_code == 200
-    assert "diccionario_gifs/" in respuesta.data["video_gif"]
+    # Va a la biblioteca como seña pendiente del Validador (apps/cursos/validacion.py).
+    assert respuesta.data["video_gif"].startswith("/media/biblioteca/")
+    assert respuesta.data["estado_sena"] == "pendiente"
     respuesta = cliente.post(f"/api/panel/preguntas/{pregunta.id}/gif/", {"gif": gif()}, format="multipart")
     assert respuesta.status_code == 200
-    assert "evaluacion_gifs/" in respuesta.data["video"]
+    assert respuesta.data["video"].startswith("/media/biblioteca/")
+    assert respuesta.data["estado_sena"] == "pendiente"
 
 
 @pytest.mark.parametrize("ruta", ["diccionario", "preguntas"])

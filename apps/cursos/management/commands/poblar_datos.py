@@ -24,6 +24,7 @@ from apps.usuarios.roles import (
     ROL_ESTUDIANTE,
     ROL_INTERPRETE,
     ROL_PROFESOR,
+    ROL_VALIDADOR,
     asignar_rol,
 )
 
@@ -38,6 +39,7 @@ USUARIOS_DEMO = [
     ("profesor_demo", "profesor_demo@ensenarte.local", ROL_PROFESOR),
     ("profesor2_demo", "profesor2_demo@ensenarte.local", ROL_PROFESOR),
     ("interprete_demo", "interprete_demo@ensenarte.local", ROL_INTERPRETE),
+    ("validador_demo", "validador_demo@ensenarte.local", ROL_VALIDADOR),
     ("estudiante_demo", "estudiante_demo@ensenarte.local", ROL_ESTUDIANTE),
 ]
 

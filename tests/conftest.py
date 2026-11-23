@@ -24,6 +24,7 @@ from apps.usuarios.roles import (
     ROL_ESTUDIANTE,
     ROL_INTERPRETE,
     ROL_PROFESOR,
+    ROL_VALIDADOR,
     asignar_rol,
 )
 
@@ -119,6 +120,11 @@ def creador(crear_usuario):
 @pytest.fixture
 def administrador(crear_usuario):
     return crear_usuario(ROL_ADMINISTRADOR, "administrador")
+
+
+@pytest.fixture
+def validador(crear_usuario):
+    return crear_usuario(ROL_VALIDADOR, "validador")
 
 
 @pytest.fixture

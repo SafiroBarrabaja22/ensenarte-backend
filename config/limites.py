@@ -20,3 +20,4 @@ MAX_PASSWORD = 128         # igual que el campo password de Django
 MAX_DESCRIPCION_CURSO = 1000
 MAX_UID_RECUPERACION = 64
 MAX_TOKEN_RECUPERACION = 100
+MAX_COMENTARIO_VALIDACION = 500   # comentario del Validador al aprobar o rechazar una sena

@@ -449,11 +449,53 @@ completa de rol contra endpoint está en el README ("Roles y permisos").
 
 | Rol | Endpoints del panel |
 |---|---|
-| `Administrador` (grupo o superusuario) | Todos |
+| `Administrador` (grupo o superusuario) | Todos, menos validar señas |
 | `CreadorDeCursos` | Cursos, preguntas, opciones, diccionario, resumen, estrellas y gifs de **todos** los cursos. No escribe en la biblioteca |
 | `Profesor` | Lo mismo, pero solo modifica los cursos que **él creó** y su contenido. En los listados solo ve los suyos; abrir o editar uno ajeno devuelve 403 |
 | `Interprete` | Biblioteca (`/panel/recursos/`), gifs de preguntas y palabras de cualquier curso y `/panel/archivos/` |
+| `Validador` | Leer la biblioteca, `POST /panel/recursos/<id>/validar/` (**solo él**) y el historial de cada seña |
 | `Estudiante` | Nada del panel, salvo leer avatares en `/panel/recursos/` |
+
+## Validación de señas
+
+Una seña es un GIF de la categoría `recurso` de la biblioteca. Los recursos traen
+`es_sena`, `estado_validacion` (`pendiente`, `aprobada` o `rechazada`),
+`comentario_validacion` (de la última decisión) y `subido_por`.
+
+- **Estado inicial:** al subir una seña, o al reemplazar su archivo con `PATCH`, queda
+  `pendiente`.
+- **Quién ve las pendientes:** Profesor y CreadorDeCursos no ven las señas pendientes ni
+  las rechazadas.
+- **Filtro:** `GET /panel/recursos/?estado=pendiente`.
+- **Gifs de palabras y preguntas:**
+  - `video_gif` (palabras) y `video` (preguntas) solo aceptan un gif **nuevo** si es una
+    seña aprobada de la biblioteca. Si no, la API responde 400 con
+    `"Esa seña todavía no está aprobada por el Validador."`.
+  - Los gifs de `assets/` del frontend siguen permitidos.
+  - Las dos respuestas incluyen `estado_sena`.
+- **Diccionario del estudiante:** `GET /cursos/<slug>/diccionario/` omite las palabras cuya
+  seña no está aprobada.
+
+**POST `/panel/recursos/<id>/validar/`** (solo `Validador`)
+```json
+{ "decision": "rechazar", "comentario": "La mano debe quedar a la altura del pecho." }
+```
+
+- `decision` es `aprobar` o `rechazar`.
+- Al rechazar, el `comentario` es obligatorio (máximo 500 caracteres).
+- Responde el recurso actualizado.
+- Responde 400 si el recurso no es una seña, y 403 a cualquier otro rol, incluido
+  Administrador.
+
+**GET `/panel/recursos/<id>/revisiones/`** (Validador, Interprete o Administrador)
+```json
+[
+  { "id": 4, "accion": "reenviada", "comentario": "", "usuario": "interprete_demo",
+    "archivo": "biblioteca/9c2e.gif", "fecha": "2026-11-23T10:05:00-05:00" },
+  { "id": 3, "accion": "rechazada", "comentario": "La mano debe quedar a la altura del pecho.",
+    "usuario": "validador_demo", "archivo": "biblioteca/7b1e.gif", "fecha": "2026-11-23T09:30:00-05:00" }
+]
+```
 
 Las listas usan la paginación por defecto de DRF:
 

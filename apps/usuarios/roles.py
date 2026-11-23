@@ -16,12 +16,16 @@ ROL_PROFESOR = "Profesor"
 ROL_INTERPRETE = "Interprete"
 ROL_CREADOR = "CreadorDeCursos"
 ROL_ADMINISTRADOR = "Administrador"
+# Revisa las senas que sube el Interprete y las aprueba o rechaza. Es el UNICO
+# que puede hacerlo: ni el Administrador ni un superusuario lo reemplazan.
+ROL_VALIDADOR = "Validador"
 
 # Orden en el que se devuelven en el perfil (de mayor a menor alcance).
 TODOS_LOS_ROLES = (
     ROL_ADMINISTRADOR,
     ROL_CREADOR,
     ROL_PROFESOR,
+    ROL_VALIDADOR,
     ROL_INTERPRETE,
     ROL_ESTUDIANTE,
 )

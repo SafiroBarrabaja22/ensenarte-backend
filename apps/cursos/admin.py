@@ -12,6 +12,7 @@ from .models import (
     PalabraDiccionario,
     Pregunta,
     ProgresoUsuario,
+    RevisionSena,
 )
 
 
@@ -114,6 +115,29 @@ class AuditoriaCursoAdmin(admin.ModelAdmin):
     search_fields = ("curso_id", "usuario__username")
     date_hierarchy = "fecha"
     readonly_fields = [f.name for f in AuditoriaCurso._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(RevisionSena)
+class RevisionSenaAdmin(admin.ModelAdmin):
+    """
+    Solo lectura: el historial lo escriben el Validador (panel, POST .../validar/)
+    y los reemplazos de archivo. Nadie lo edita a mano, ni el superusuario.
+    """
+
+    list_display = ("fecha", "recurso", "accion", "usuario")
+    list_filter = ("accion",)
+    search_fields = ("recurso__nombre", "usuario__username", "comentario")
+    date_hierarchy = "fecha"
+    readonly_fields = [f.name for f in RevisionSena._meta.fields]
 
     def has_add_permission(self, request):
         return False

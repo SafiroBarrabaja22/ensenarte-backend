@@ -16,7 +16,9 @@ from .models import (
     Pregunta,
     ProgresoUsuario,
     RecursoVisual,
+    RevisionSena,
 )
+from .validacion import estado_de, exigir_sena_aprobada, senas_no_aprobadas, ultimo_comentario
 
 
 class InsigniaSerializer(serializers.Serializer):
@@ -180,6 +182,11 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
     archivo = serializers.ImageField(write_only=True, required=False)
     archivo_url = serializers.SerializerMethodField()
     extension = serializers.SerializerMethodField()
+    es_sena = serializers.BooleanField(read_only=True, help_text="Gif de seña: pasa por el Validador.")
+    comentario_validacion = serializers.SerializerMethodField(
+        help_text="Comentario de la última decisión del Validador."
+    )
+    subido_por = serializers.CharField(source="subido_por.username", read_only=True, default="")
 
     class Meta:
         model = RecursoVisual
@@ -191,8 +198,13 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
             "extension",
             "categoria",
             "fecha_creacion",
+            "es_sena",
+            "estado_validacion",
+            "comentario_validacion",
+            "subido_por",
         )
-        read_only_fields = ("id", "archivo_url", "extension", "fecha_creacion")
+        # estado_validacion solo lo cambia el Validador (POST .../validar/).
+        read_only_fields = ("id", "archivo_url", "extension", "fecha_creacion", "estado_validacion")
 
     def get_fields(self):
         fields = super().get_fields()
@@ -217,6 +229,38 @@ class RecursoVisualSerializer(serializers.ModelSerializer):
 
     def get_extension(self, obj) -> str:
         return Path(obj.archivo.name).suffix.lower().lstrip(".")
+
+    def get_comentario_validacion(self, obj) -> str:
+        return ultimo_comentario(obj)
+
+
+class RevisionSenaSerializer(serializers.ModelSerializer):
+    usuario = serializers.CharField(source="usuario.username", read_only=True, default="")
+
+    class Meta:
+        model = RevisionSena
+        fields = ("id", "accion", "comentario", "usuario", "archivo", "fecha")
+        read_only_fields = fields
+
+
+class _EstadoSenaMixin:
+    """Agrega `estado_sena`: el estado de validacion del gif que usa el objeto."""
+
+    campo_gif = None
+
+    def get_estado_sena(self, obj) -> str:
+        # Una consulta por respuesta, no una por fila: el mapa se guarda en el contexto.
+        no_aprobadas = self.context.get("_senas_no_aprobadas")
+        if no_aprobadas is None:
+            no_aprobadas = senas_no_aprobadas()
+            self.context["_senas_no_aprobadas"] = no_aprobadas
+        return estado_de(getattr(obj, self.campo_gif), no_aprobadas)
+
+    def _validar_gif(self, valor):
+        """Solo se revisa cuando el gif cambia: lo que ya estaba asignado se conserva."""
+        if self.instance is None or valor != getattr(self.instance, self.campo_gif):
+            exigir_sena_aprobada(valor)
+        return valor
 
 
 class CursoPanelSerializer(serializers.ModelSerializer):
@@ -287,16 +331,31 @@ class OpcionPanelSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class PreguntaPanelSerializer(serializers.ModelSerializer):
+class PreguntaPanelSerializer(_EstadoSenaMixin, serializers.ModelSerializer):
+    campo_gif = "video"
     opciones = OpcionPanelSerializer(many=True, read_only=True)
+    estado_sena = serializers.SerializerMethodField(
+        help_text="`aprobada`, `pendiente` o `rechazada` (estado del gif en la biblioteca)."
+    )
 
     class Meta:
         model = Pregunta
-        fields = ("id", "curso", "texto", "video", "opciones")
+        fields = ("id", "curso", "texto", "video", "opciones", "estado_sena")
+
+    def validate_video(self, valor):
+        return self._validar_gif(valor)
 
 
-class PalabraPanelSerializer(serializers.ModelSerializer):
+class PalabraPanelSerializer(_EstadoSenaMixin, serializers.ModelSerializer):
+    campo_gif = "video_gif"
+    estado_sena = serializers.SerializerMethodField(
+        help_text="`aprobada`, `pendiente` o `rechazada` (estado del gif en la biblioteca)."
+    )
+
     class Meta:
         model = PalabraDiccionario
-        fields = ("id", "curso", "titulo", "imagen_frontal", "video_gif", "orden")
+        fields = ("id", "curso", "titulo", "imagen_frontal", "video_gif", "orden", "estado_sena")
         read_only_fields = ("orden",)
+
+    def validate_video_gif(self, valor):
+        return self._validar_gif(valor)

@@ -13,6 +13,7 @@ repositorio [`ensenarte-frontend`](../ensenarte-frontend).
 | **Autenticación** | JWT (SimpleJWT) |
 | **Base de datos** | MySQL (producción y equipo); SQLite en memoria para las pruebas |
 | **Puerto por defecto** | `http://127.0.0.1:8000` |
+| **Documento del proyecto** | [Abrir en SharePoint (Word)](https://mailunicundiedu-my.sharepoint.com/:w:/g/personal/jestebanbernal_ucundinamarca_edu_co/cQp-DpUHlZH2S4IOyJkQVvEkEgUCN6xCRNbXGdR2Lyb1BgURrw?rtime=qPDZ-VBI30g) |
 
 ---
 

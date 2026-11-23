@@ -58,11 +58,13 @@ WORKDIR /app
 COPY --from=compilacion /opt/venv /opt/venv
 # Solo lo que la aplicacion necesita para correr, carpeta por carpeta: nada de
 # copiar el directorio completo (podria colar un .env o una base de datos).
-COPY --chown=ensenarte:ensenarte manage.py ./
-COPY --chown=ensenarte:ensenarte config/ config/
-COPY --chown=ensenarte:ensenarte apps/ apps/
-COPY --chown=ensenarte:ensenarte media/biblioteca/ media/biblioteca/
-COPY --chown=ensenarte:ensenarte media/contenido/ media/contenido/
+# Sin --chown: el codigo queda de root y el usuario de la aplicacion solo puede
+# leerlo. Unicamente media/ y staticfiles/ pasan a ser suyos (RUN de abajo).
+COPY manage.py ./
+COPY config/ config/
+COPY apps/ apps/
+COPY media/biblioteca/ media/biblioteca/
+COPY media/contenido/ media/contenido/
 
 # Estaticos del admin, DRF y Swagger (los sirve WhiteNoise). collectstatic no
 # toca la base de datos; SECRET_KEY y DATABASE_URL solo existen en este paso
